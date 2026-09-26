@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Lotus Stay | Quản lý khách sạn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <main class="page-shell">
+    <section class="visual-panel" aria-label="Lotus Stay">
+      <div class="visual-top"><span class="brand-mark" aria-hidden="true">L</span><span>LOTUS STAY</span></div>
+      <div class="visual-copy">
+        <p class="kicker">HOSPITALITY, MADE HUMAN</p>
+        <h1>Một nơi chốn<br>để nhớ.</h1>
+        <p>Chào mừng bạn đến với không gian quản lý khách sạn Lotus Stay.</p>
+      </div>
+      <div class="visual-footer"><span>QUẢN LÝ VẬN HÀNH</span><span>01 / 2026</span></div>
+    </section>
+
+    <section class="workspace">
+      <div class="mobile-brand"><span class="brand-mark" aria-hidden="true">L</span><span>LOTUS STAY</span></div>
+      <section class="auth-view" id="authView">
+        <div class="form-heading">
+          <p class="kicker">CỔNG NHÂN VIÊN</p>
+          <h2>Chào mừng trở lại</h2>
+          <p>Đăng nhập để tiếp tục vào hệ thống.</p>
+        </div>
+        <form id="loginForm" novalidate>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="username" placeholder="ten@khachsan.vn" required>
+          <label for="password">Mật khẩu</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required>
+          <p class="form-message" id="formMessage" role="alert" aria-live="polite"></p>
+          <button class="primary-button" type="submit">Đăng nhập <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="security-note"><span aria-hidden="true">●</span> Kết nối nội bộ được bảo vệ</p>
+      </section>
+
+      <section class="dashboard-view hidden" id="dashboardView">
+        <header class="dashboard-header">
+          <div><p class="kicker">LOTUS STAY / TỔNG QUAN</p><h2>Xin chào, <span id="userName"></span></h2></div>
+          <button class="logout-button" id="logoutButton" type="button" title="Đăng xuất" aria-label="Đăng xuất">Đăng xuất <span aria-hidden="true">↗</span></button>
+        </header>
+        <div class="welcome-panel">
+          <p class="kicker">HÔM NAY</p>
+          <h3>Không gian làm việc<br>của bạn đã sẵn sàng.</h3>
+          <p>Phiên đăng nhập đang hoạt động.</p>
+        </div>
+        <div class="account-row"><span>Tài khoản</span><strong id="userEmail"></strong></div>
+        <div class="account-row"><span>Vai trò</span><strong id="userRole"></strong></div>
+      </section>
+      <footer class="workspace-footer">LOTUS STAY <span>·</span> HỆ THỐNG QUẢN LÝ KHÁCH SẠN</footer>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

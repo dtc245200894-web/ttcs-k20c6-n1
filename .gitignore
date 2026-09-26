@@ -1,0 +1,13 @@
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Secrets
+.env
