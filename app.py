@@ -36,6 +36,17 @@ def login():
     return jsonify({"ok": True, "message": "Đăng nhập thành công.", "user": user})
 
 
+@app.post("/api/register")
+def register():
+    payload = request.get_json(silent=True) or {}
+    ok, message = auth_service.register(
+        payload.get("full_name", ""),
+        payload.get("email", ""),
+        payload.get("password", ""),
+    )
+    return jsonify({"ok": ok, "message": message}), 201 if ok else 400
+
+
 @app.post("/api/logout")
 def logout():
     session.clear()

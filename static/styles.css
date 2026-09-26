@@ -27,7 +27,7 @@ button, input { font: inherit; }
 .visual-copy > p:last-child { max-width: 290px; margin-top: 22px; color: #d1dbd2; font-size: 14px; line-height: 1.8; }
 .visual-footer { color: #cfdbd1; font-size: 9px; font-weight: 600; letter-spacing: 1.4px; }
 .workspace { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 64px clamp(40px, 8vw, 106px) 28px; }
-.auth-view, .dashboard-view { width: 100%; max-width: 400px; margin: auto; animation: rise-in 420ms ease both; }
+.auth-view, .registration-view, .dashboard-view { width: 100%; max-width: 400px; margin: auto; animation: rise-in 420ms ease both; }
 .form-heading { margin-bottom: 34px; }
 .form-heading .kicker, .dashboard-header .kicker { color: var(--green); }
 h2 { margin: 0; font: 600 31px/1.25 "Playfair Display", serif; letter-spacing: 0; }
@@ -41,8 +41,10 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px #426b5918; }
 .primary-button { display: flex; align-items: center; justify-content: space-between; height: 50px; padding: 0 17px; border: 0; border-radius: 3px; color: #fff; background: var(--forest); cursor: pointer; font-size: 13px; font-weight: 600; transition: background 160ms, transform 160ms; }
 .primary-button:hover { transform: translateY(-1px); background: #285344; }
 .primary-button:disabled { cursor: wait; opacity: .7; }
-.security-note { margin: 26px 0 0; color: #858c85; font-size: 11px; }
-.security-note span { margin-right: 7px; color: #548267; font-size: 9px; }
+.auth-switch { margin: 26px 0 0; color: #858c85; font-size: 12px; }
+.text-link { padding: 0; border: 0; color: var(--green); background: none; cursor: pointer; font-size: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.text-link:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.form-message.success { color: var(--green); }
 .workspace-footer { margin-top: auto; padding-top: 32px; color: #92978f; font-size: 9px; font-weight: 600; letter-spacing: 1.2px; }
 .workspace-footer span { padding: 0 4px; color: #b79755; }
 .hidden { display: none !important; }
@@ -68,7 +70,7 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px #426b5918; }
   .workspace { min-height: 100vh; padding: 26px 26px 20px; }
   .mobile-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 78px; color: var(--forest); font-size: 11px; font-weight: 700; letter-spacing: 1.7px; }
   .mobile-brand .brand-mark { color: var(--green); }
-  .auth-view, .dashboard-view { margin: 0 auto auto; }
+  .auth-view, .registration-view, .dashboard-view { margin: 0 auto auto; }
   .form-heading { margin-bottom: 28px; }
   h2 { font-size: 28px; }
   .workspace-footer { padding-top: 36px; }

@@ -38,7 +38,28 @@
           <p class="form-message" id="formMessage" role="alert" aria-live="polite"></p>
           <button class="primary-button" type="submit">Đăng nhập <span aria-hidden="true">→</span></button>
         </form>
-        <p class="security-note"><span aria-hidden="true">●</span> Kết nối nội bộ được bảo vệ</p>
+        <p class="auth-switch">Bạn chưa có tài khoản? <button class="text-link" id="showRegistration" type="button">Tạo tài khoản</button></p>
+      </section>
+
+      <section class="registration-view hidden" id="registrationView">
+        <div class="form-heading">
+          <p class="kicker">THAM GIA LOTUS STAY</p>
+          <h2>Tạo tài khoản</h2>
+          <p>Nhập thông tin để đăng ký tài khoản nhân viên.</p>
+        </div>
+        <form id="registrationForm" novalidate>
+          <label for="fullName">Họ và tên</label>
+          <input id="fullName" name="full_name" type="text" autocomplete="name" maxlength="120" placeholder="Nguyễn Văn An" required>
+          <label for="registerEmail">Email</label>
+          <input id="registerEmail" name="email" type="email" autocomplete="email" placeholder="ten@khachsan.vn" required>
+          <label for="registerPassword">Mật khẩu</label>
+          <input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Ít nhất 8 ký tự" required>
+          <label for="confirmPassword">Xác nhận mật khẩu</label>
+          <input id="confirmPassword" name="confirm_password" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Nhập lại mật khẩu" required>
+          <p class="form-message" id="registrationMessage" role="alert" aria-live="polite"></p>
+          <button class="primary-button" type="submit">Tạo tài khoản <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="auth-switch">Đã có tài khoản? <button class="text-link" id="showLogin" type="button">Đăng nhập</button></p>
       </section>
 
       <section class="dashboard-view hidden" id="dashboardView">
