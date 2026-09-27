@@ -5,7 +5,7 @@ import os
 from flask import Flask, jsonify, render_template, request, session
 
 from backend.database import Database
-from backend.services import AuthService
+from backend.services import AuthService, RoomService
 
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +15,7 @@ app.config["DATABASE_PATH"] = os.environ.get("DATABASE_PATH", os.path.join(ROOT,
 
 database = Database(app.config["DATABASE_PATH"])
 auth_service = AuthService(database)
+room_service = RoomService(database)
 
 
 @app.get("/")
@@ -56,6 +57,42 @@ def logout():
 @app.get("/api/session")
 def current_session():
     return jsonify({"user": session.get("user")})
+
+
+@app.get("/api/rooms")
+def get_rooms():
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+    return jsonify({"ok": True, "rooms": room_service.list_rooms()})
+
+
+@app.post("/api/rooms")
+def create_room():
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    ok, message, room = room_service.create_room(payload)
+    return jsonify({"ok": ok, "message": message, "room": room}), 201 if ok else 400
+
+
+@app.put("/api/rooms/<int:room_id>")
+def update_room(room_id):
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    ok, message, room = room_service.update_room(room_id, payload)
+    return jsonify({"ok": ok, "message": message, "room": room}), 200 if ok else 400
+
+
+@app.delete("/api/rooms/<int:room_id>")
+def delete_room(room_id):
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+
+    ok, message = room_service.delete_room(room_id)
+    return jsonify({"ok": ok, "message": message}), 200 if ok else 400
 
 
 if __name__ == "__main__":

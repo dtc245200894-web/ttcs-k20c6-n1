@@ -67,13 +67,140 @@
           <div><p class="kicker">LOTUS STAY / TỔNG QUAN</p><h2>Xin chào, <span id="userName"></span></h2></div>
           <button class="logout-button" id="logoutButton" type="button" title="Đăng xuất" aria-label="Đăng xuất">Đăng xuất <span aria-hidden="true">↗</span></button>
         </header>
-        <div class="welcome-panel">
-          <p class="kicker">HÔM NAY</p>
-          <h3>Không gian làm việc<br>của bạn đã sẵn sàng.</h3>
-          <p>Phiên đăng nhập đang hoạt động.</p>
+
+        <div class="dashboard-shell">
+          <aside class="sidebar-panel">
+            <div class="sidebar-section">
+              <p class="sidebar-label">MENU</p>
+              <button type="button" class="nav-button active" data-view="overview">Tổng quan</button>
+              <button type="button" class="nav-button" data-view="rooms">Quản lý phòng</button>
+              <button type="button" class="nav-button" data-view="bookings">Đặt phòng</button>
+              <button type="button" class="nav-button" data-view="customers">Khách hàng</button>
+            </div>
+            <div class="sidebar-section account-box">
+              <p class="sidebar-label">TÀI KHOẢN</p>
+              <div class="account-row"><span>Email</span><strong id="userEmail"></strong></div>
+              <div class="account-row"><span>Vai trò</span><strong id="userRole"></strong></div>
+            </div>
+          </aside>
+
+          <section class="management-panel">
+            <section class="dashboard-section active" data-dashboard-view="overview">
+              <div class="welcome-panel">
+                <p class="kicker">HÔM NAY</p>
+                <h3>Không gian làm việc<br>của bạn đã sẵn sàng.</h3>
+                <p>Phiên đăng nhập đang hoạt động.</p>
+              </div>
+              <div class="floor-summary">
+              <div>
+                <p class="summary-label">Tổng phòng</p>
+                <strong id="totalRooms">0</strong>
+              </div>
+              <div>
+                <p class="summary-label">Phòng trống</p>
+                <strong id="availableRooms">0</strong>
+              </div>
+              <div>
+                <p class="summary-label">Đã thuê</p>
+                <strong id="occupiedRooms">0</strong>
+              </div>
+              </div>
+            </section>
+
+            <section class="dashboard-section" data-dashboard-view="rooms">
+              <div class="room-toolbar">
+                <div class="filter-group" aria-label="Lọc trạng thái phòng">
+                  <button type="button" class="chip active" data-filter="all">Tất cả</button>
+                  <button type="button" class="chip" data-filter="available">Trống</button>
+                  <button type="button" class="chip" data-filter="occupied">Đã thuê</button>
+                  <button type="button" class="chip" data-filter="cleaning">Đang dọn</button>
+                </div>
+                <button class="primary-button" id="openRoomForm" type="button">+ Thêm phòng</button>
+              </div>
+
+              <div class="rooms-section">
+                <div class="room-panel-header">
+                  <div>
+                    <p class="kicker">SƠ ĐỒ PHÒNG</p>
+                    <h3>Quản lý danh sách phòng</h3>
+                  </div>
+                </div>
+                <div class="rooms-grid" id="roomsGrid" aria-live="polite"></div>
+              </div>
+            </section>
+          </section>
+
+          <div class="room-modal hidden" id="roomFormModal">
+          <aside class="form-panel" id="roomFormPanel" role="dialog" aria-modal="true" aria-labelledby="roomFormTitle">
+            <div class="form-panel-header">
+              <p class="kicker">THÔNG TIN PHÒNG</p>
+              <h3 id="roomFormTitle">Thêm phòng</h3>
+            </div>
+            <form id="roomForm" novalidate>
+              <label for="roomCode">Mã phòng</label>
+              <input id="roomCode" name="code" type="text" maxlength="20" placeholder="A101" required>
+
+              <label for="roomName">Tên phòng</label>
+              <input id="roomName" name="name" type="text" maxlength="120" placeholder="Phòng Deluxe" required>
+
+              <label for="roomDescription">Mô tả</label>
+              <textarea id="roomDescription" name="description" rows="3" maxlength="250" placeholder="Mô tả ngắn về phòng..."></textarea>
+
+              <label for="roomImage">Hình ảnh</label>
+              <input id="roomImage" name="image_url" type="url" placeholder="https://images.unsplash.com/..." required>
+
+              <div class="field-row two-col">
+                <div>
+                  <label for="roomType">Loại phòng</label>
+                  <select id="roomType" name="room_type">
+                    <option value="single">Single</option>
+                    <option value="double">Double</option>
+                    <option value="vip">VIP</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="roomFloor">Tầng</label>
+                  <input id="roomFloor" name="floor" type="number" min="1" max="50" value="1" required>
+                </div>
+              </div>
+
+              <div class="field-row two-col">
+                <div>
+                  <label for="roomPrice">Giá / đêm</label>
+                  <input id="roomPrice" name="price" type="number" min="0" step="1000" value="1000000" required>
+                </div>
+                <div>
+                  <label for="roomStatus">Trạng thái</label>
+                  <select id="roomStatus" name="status">
+                    <option value="available">Trống</option>
+                    <option value="occupied">Đã thuê</option>
+                    <option value="cleaning">Đang dọn</option>
+                    <option value="maintenance">Bảo trì</option>
+                  </select>
+                </div>
+              </div>
+
+              <p class="form-message room-form-message" id="roomFormMessage" role="alert" aria-live="polite"></p>
+
+              <div class="form-actions">
+                <button class="secondary-button" id="cancelRoomForm" type="button">Hủy</button>
+                <button class="primary-button" type="submit">Lưu phòng</button>
+              </div>
+            </form>
+          </aside>
+          </div>
+          <div class="confirm-modal hidden" id="deleteConfirmModal">
+            <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+              <p class="kicker">XÁC NHẬN THAO TÁC</p>
+              <h3 id="deleteConfirmTitle">Xóa phòng</h3>
+              <p class="confirm-message" id="deleteConfirmMessage"></p>
+              <div class="confirm-actions">
+                <button class="secondary-button" id="cancelDelete" type="button">Hủy</button>
+                <button class="danger-button" id="confirmDelete" type="button">Xác nhận</button>
+              </div>
+            </section>
+          </div>
         </div>
-        <div class="account-row"><span>Tài khoản</span><strong id="userEmail"></strong></div>
-        <div class="account-row"><span>Vai trò</span><strong id="userRole"></strong></div>
       </section>
       <footer class="workspace-footer">LOTUS STAY <span>·</span> HỆ THỐNG QUẢN LÝ KHÁCH SẠN</footer>
     </section>
