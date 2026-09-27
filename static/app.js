@@ -10,6 +10,8 @@ const roomForm = document.querySelector("#roomForm");
 const roomFormPanel = document.querySelector("#roomFormPanel");
 const roomFormModal = document.querySelector("#roomFormModal");
 const deleteConfirmModal = document.querySelector("#deleteConfirmModal");
+const deleteConfirmTitle = document.querySelector("#deleteConfirmTitle");
+const deleteConfirmKicker = document.querySelector("#deleteConfirmModal .kicker");
 const deleteConfirmMessage = document.querySelector("#deleteConfirmMessage");
 const cancelDeleteButton = document.querySelector("#cancelDelete");
 const confirmDeleteButton = document.querySelector("#confirmDelete");
@@ -132,6 +134,10 @@ function openDeleteConfirmation(roomId, trigger) {
   const room = (window.__roomList || []).find((item) => String(item.id) === String(roomId));
   if (!room) return;
 
+  deleteConfirmTitle.textContent = "Xóa phòng";
+  deleteConfirmKicker.textContent = "XÁC NHẬN THAO TÁC";
+  cancelDeleteButton.textContent = "Hủy";
+  confirmDeleteButton.classList.remove("hidden");
   pendingDeleteRoomId = room.id;
   deleteTrigger = trigger;
   deleteConfirmMessage.textContent = `Bạn có chắc chắn muốn xóa phòng ${room.code}?`;
@@ -140,8 +146,39 @@ function openDeleteConfirmation(roomId, trigger) {
   cancelDeleteButton.focus();
 }
 
+function showDeleteBlockedNotice(trigger) {
+  deleteConfirmTitle.textContent = "Không thể xóa";
+  deleteConfirmKicker.textContent = "THÔNG BÁO";
+  deleteConfirmMessage.textContent = "Phòng này hiện tại không thể xóa.";
+  deleteConfirmMessage.classList.add("error");
+  cancelDeleteButton.textContent = "Đóng";
+  confirmDeleteButton.classList.add("hidden");
+  pendingDeleteRoomId = null;
+  deleteTrigger = trigger;
+  deleteConfirmModal.classList.remove("hidden");
+  cancelDeleteButton.focus();
+}
+
+function showDeleteSuccessNotice() {
+  deleteConfirmTitle.textContent = "Xóa thành công";
+  deleteConfirmKicker.textContent = "THÔNG BÁO";
+  deleteConfirmMessage.textContent = "Xóa phòng thành công";
+  deleteConfirmMessage.classList.remove("error");
+  cancelDeleteButton.textContent = "Đóng";
+  confirmDeleteButton.classList.add("hidden");
+  pendingDeleteRoomId = null;
+  deleteTrigger = null;
+  deleteConfirmModal.classList.remove("hidden");
+  cancelDeleteButton.focus();
+}
+
 function closeDeleteConfirmation() {
   deleteConfirmModal.classList.add("hidden");
+  deleteConfirmTitle.textContent = "Xóa phòng";
+  deleteConfirmKicker.textContent = "XÁC NHẬN THAO TÁC";
+  deleteConfirmMessage.classList.remove("error");
+  cancelDeleteButton.textContent = "Hủy";
+  confirmDeleteButton.classList.remove("hidden");
   pendingDeleteRoomId = null;
   if (deleteTrigger?.isConnected) deleteTrigger.focus();
   deleteTrigger = null;
@@ -185,7 +222,7 @@ function renderRooms() {
       </div>
       <div class="room-actions">
         <button class="mini-button" type="button" data-action="edit" data-room-id="${room.id}">Sửa</button>
-        <button class="mini-button danger" type="button" data-action="delete" data-room-id="${room.id}">Xóa</button>
+        <button class="mini-button danger" type="button" data-action="delete" data-room-id="${room.id}" ${["available", "occupied", "cleaning"].includes(room.status) ? "" : 'disabled title="Chỉ xóa được phòng đang trống"'}>Xóa</button>
       </div>
     </article>
   `).join("");
@@ -258,7 +295,7 @@ async function deleteRoom(roomId) {
       return;
     }
     await loadRooms();
-    closeDeleteConfirmation();
+    showDeleteSuccessNotice();
   } catch {
     deleteConfirmMessage.textContent = "Không thể xóa phòng. Vui lòng thử lại.";
     deleteConfirmMessage.classList.add("error");
@@ -373,7 +410,12 @@ roomsGrid.addEventListener("click", async (event) => {
   }
 
   if (action === "delete") {
-    openDeleteConfirmation(roomId, button);
+    const room = (window.__roomList || []).find((item) => String(item.id) === String(roomId));
+    if (room?.status === "occupied" || room?.status === "cleaning") {
+      showDeleteBlockedNotice(button);
+      return;
+    }
+    if (room?.status === "available") openDeleteConfirmation(roomId, button);
   }
 });
 
