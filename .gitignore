@@ -8,6 +8,7 @@
 .venv/
 __pycache__/
 *.py[cod]
+/verify_rooms.py
 
 # Secrets
 .env
