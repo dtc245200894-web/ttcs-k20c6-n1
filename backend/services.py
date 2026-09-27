@@ -183,7 +183,14 @@ class RoomService:
 
     def delete_room(self, room_id: int) -> tuple[bool, str]:
         with self.database.connect() as connection:
-            deleted = connection.execute("DELETE FROM rooms WHERE id = ?", (room_id,))
+            deleted = connection.execute(
+                "DELETE FROM rooms WHERE id = ? AND status = 'available'", (room_id,)
+            )
             if deleted.rowcount == 0:
-                return False, "Phòng không tồn tại."
+                room = connection.execute(
+                    "SELECT id FROM rooms WHERE id = ?", (room_id,)
+                ).fetchone()
+                if room is None:
+                    return False, "Phòng không tồn tại."
+                return False, "Chỉ có thể xóa phòng đang trống."
         return True, "Phòng đã được xóa."
