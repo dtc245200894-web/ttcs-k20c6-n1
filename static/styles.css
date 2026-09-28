@@ -111,11 +111,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .page-shell.dashboard-mode .management-panel { padding: 0; }
 .dashboard-section { display: none; gap: 18px; }
 .dashboard-section.active { display: grid; }
-.welcome-panel { position: relative; overflow: hidden; padding: 28px 26px; color: white; background: var(--forest); border-radius: 14px; }
-.welcome-panel::after { position: absolute; right: -38px; bottom: -112px; width: 210px; height: 210px; border: 1px solid #c7b77d66; border-radius: 50%; box-shadow: 0 0 0 18px #c7b77d13, 0 0 0 38px #c7b77d0d; content: ""; }
-.welcome-panel .kicker { color: #b8c8bc; }
-.welcome-panel h3 { position: relative; z-index: 1; margin: 0; font: 600 24px/1.35 "Playfair Display", serif; }
-.welcome-panel > p:last-child { position: relative; z-index: 1; margin: 18px 0 0; color: #d2ddd4; font-size: 12px; }
 .room-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .filter-group { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--forest); cursor: pointer; font-size: 11px; font-weight: 600; }
@@ -124,6 +119,37 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .floor-summary > div { padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .summary-label { margin: 0 0 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
 .floor-summary strong { font-size: 28px; color: var(--forest); }
+.overview-rooms-section { display: grid; gap: 16px; }
+.overview-section-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.overview-section-header .kicker { margin-bottom: 8px; }
+.overview-section-header h3 { margin: 0; font-size: 20px; }
+.room-legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 11px; }
+.room-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+.available-dot { background: #55a978; }
+.occupied-dot { background: #c36b4b; }
+.cleaning-dot { background: #6874d8; }
+.maintenance-dot { background: #b95757; }
+.overview-rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); align-content: start; max-height: min(58vh, 620px); gap: 12px; overflow-y: auto; padding: 2px 10px 10px 2px; scrollbar-color: var(--green) #e9eee9; scrollbar-gutter: stable; scrollbar-width: thin; }
+.overview-room-card { display: grid; gap: 18px; min-height: 132px; padding: 16px; border: 1px solid transparent; border-radius: 10px; }
+.overview-room-card.is-available { border-color: #b8e4c9; background: #e7f7ed; }
+.overview-room-card.is-occupied { border-color: #f0c3ae; background: #fff0e9; }
+.overview-room-card.is-cleaning { border-color: #d6daf8; background: #f0f1ff; }
+.overview-room-card.is-maintenance { border-color: #e4d0d0; background: #f8eeee; }
+.overview-room-heading, .overview-room-details { display: flex; justify-content: space-between; gap: 10px; }
+.overview-room-heading { align-items: flex-start; }
+.overview-room-heading > strong { color: var(--forest); font-size: 18px; }
+.overview-room-status { color: var(--muted); font-size: 10px; font-weight: 700; text-align: right; }
+.is-available .overview-room-status { color: var(--available-text); }
+.is-occupied .overview-room-status { color: var(--occupied-text); }
+.is-cleaning .overview-room-status { color: var(--cleaning-text); }
+.is-maintenance .overview-room-status { color: var(--maintenance-text); }
+.overview-room-details { margin-top: auto; }
+.overview-room-details div { display: grid; gap: 5px; }
+.overview-room-details span { color: var(--muted); font-size: 10px; }
+.overview-room-details strong { color: var(--forest); font-size: 12px; }
+.overview-room-card.room-empty { grid-column: 1 / -1; min-height: 80px; border-color: var(--line); background: #fff; }
+.overview-room-card.room-empty span { color: var(--muted); font-size: 12px; }
 .rooms-section { display: grid; gap: 16px; }
 .room-panel-header { display: flex; align-items: center; justify-content: space-between; }
 .room-panel-header h3 { margin: 0; font-size: 20px; }
@@ -182,6 +208,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
   .workspace-footer { padding-top: 36px; }
   .dashboard-shell { grid-template-columns: 1fr; }
   .floor-summary { grid-template-columns: 1fr; }
+  .overview-section-header { align-items: flex-start; flex-direction: column; }
   .field-row { grid-template-columns: 1fr; }
   .room-modal { padding: 12px; }
   .form-panel { max-height: calc(100vh - 24px); padding: 22px 20px; }

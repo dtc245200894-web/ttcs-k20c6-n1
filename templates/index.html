@@ -86,11 +86,6 @@
 
           <section class="management-panel">
             <section class="dashboard-section active" data-dashboard-view="overview">
-              <div class="welcome-panel">
-                <p class="kicker">HÔM NAY</p>
-                <h3>Không gian làm việc<br>của bạn đã sẵn sàng.</h3>
-                <p>Phiên đăng nhập đang hoạt động.</p>
-              </div>
               <div class="floor-summary">
               <div>
                 <p class="summary-label">Tổng phòng</p>
@@ -104,6 +99,21 @@
                 <p class="summary-label">Đã thuê</p>
                 <strong id="occupiedRooms">0</strong>
               </div>
+              </div>
+              <div class="overview-rooms-section">
+                <div class="overview-section-header">
+                  <div>
+                    <p class="kicker">DANH SÁCH PHÒNG</p>
+                    <h3>Tình trạng phòng hôm nay</h3>
+                  </div>
+                  <div class="room-legend" aria-label="Chú thích trạng thái phòng">
+                    <span><i class="legend-dot available-dot"></i>Phòng trống</span>
+                    <span><i class="legend-dot occupied-dot"></i>Đã có người thuê</span>
+                    <span><i class="legend-dot cleaning-dot"></i>Đang dọn</span>
+                    <span><i class="legend-dot maintenance-dot"></i>Bảo trì</span>
+                  </div>
+                </div>
+                <div class="overview-rooms-grid" id="overviewRoomsGrid" aria-live="polite"></div>
               </div>
             </section>
 
