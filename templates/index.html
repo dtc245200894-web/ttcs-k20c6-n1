@@ -216,6 +216,10 @@
       <footer class="workspace-footer">LOTUS STAY <span>·</span> HỆ THỐNG QUẢN LÝ KHÁCH SẠN</footer>
     </section>
   </main>
+  <div class="success-toast hidden" id="successToast" role="status" aria-live="polite">
+    <span class="success-toast-icon" aria-hidden="true">✓</span>
+    <span id="successToastMessage"></span>
+  </div>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
 </html>

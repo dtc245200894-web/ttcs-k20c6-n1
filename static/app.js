@@ -22,6 +22,9 @@ const roomFormMessage = document.querySelector("#roomFormMessage");
 const totalRooms = document.querySelector("#totalRooms");
 const availableRooms = document.querySelector("#availableRooms");
 const occupiedRooms = document.querySelector("#occupiedRooms");
+const successToast = document.querySelector("#successToast");
+const successToastMessage = document.querySelector("#successToastMessage");
+let successToastTimer;
 
 const roomStatusMap = {
   available: "Trống",
@@ -54,6 +57,13 @@ function setDashboardView(view) {
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Number(value || 0));
+}
+
+function showSuccessToast(message) {
+  successToastMessage.textContent = message;
+  successToast.classList.remove("hidden");
+  clearTimeout(successToastTimer);
+  successToastTimer = setTimeout(() => successToast.classList.add("hidden"), 3500);
 }
 
 function showDashboard(user) {
@@ -222,7 +232,7 @@ function renderRooms() {
         <strong>${formatCurrency(room.price)}</strong>
       </div>
       <div class="room-actions">
-        <button class="mini-button" type="button" data-action="edit" data-room-id="${room.id}">Sửa</button>
+        <button class="mini-button" type="button" data-action="edit" data-room-id="${room.id}">Cập nhật</button>
         <button class="mini-button danger" type="button" data-action="delete" data-room-id="${room.id}" ${["available", "occupied", "cleaning"].includes(room.status) ? "" : 'disabled title="Chỉ xóa được phòng đang trống"'}>Xóa</button>
       </div>
     </article>
@@ -309,9 +319,14 @@ async function saveRoom(event) {
       return;
     }
 
-    roomFormMessage.textContent = result.message;
-    roomFormMessage.classList.add("success");
-    resetRoomForm();
+    if (mode === "edit") {
+      showSuccessToast("Cập nhật thành công.");
+      resetRoomForm();
+    } else {
+      roomFormMessage.textContent = result.message;
+      roomFormMessage.classList.add("success");
+      resetRoomForm();
+    }
     await loadRooms();
   } catch {
     roomFormMessage.textContent = "Không thể lưu phòng. Vui lòng thử lại.";
