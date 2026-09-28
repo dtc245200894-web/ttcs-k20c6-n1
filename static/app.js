@@ -6,6 +6,7 @@ const registrationForm = document.querySelector("#registrationForm");
 const formMessage = document.querySelector("#formMessage");
 const registrationMessage = document.querySelector("#registrationMessage");
 const roomsGrid = document.querySelector("#roomsGrid");
+const overviewRoomsGrid = document.querySelector("#overviewRoomsGrid");
 const roomForm = document.querySelector("#roomForm");
 const roomFormPanel = document.querySelector("#roomFormPanel");
 const roomFormModal = document.querySelector("#roomFormModal");
@@ -228,6 +229,37 @@ function renderRooms() {
   `).join("");
 }
 
+function renderOverviewRooms() {
+  const rooms = window.__roomList || [];
+
+  if (!rooms.length) {
+    overviewRoomsGrid.innerHTML = '<article class="overview-room-card room-empty"><strong>Chưa có phòng</strong><span>Hãy thêm phòng trong mục Quản lý phòng.</span></article>';
+    return;
+  }
+
+  overviewRoomsGrid.innerHTML = rooms.map((room) => {
+    const overviewStatusMap = {
+      available: { className: "is-available", label: "Phòng trống" },
+      occupied: { className: "is-occupied", label: "Đã có người thuê" },
+      cleaning: { className: "is-cleaning", label: "Đang dọn" },
+      maintenance: { className: "is-maintenance", label: "Bảo trì" },
+    };
+    const status = overviewStatusMap[room.status] || overviewStatusMap.maintenance;
+    return `
+      <article class="overview-room-card ${status.className}">
+        <div class="overview-room-heading">
+          <strong>${room.code}</strong>
+          <span class="overview-room-status">${status.label}</span>
+        </div>
+        <div class="overview-room-details">
+          <div><span>Giờ vào</span><strong>${room.check_in || "Chưa có"}</strong></div>
+          <div><span>Giờ ra</span><strong>${room.check_out || "Chưa có"}</strong></div>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
 async function loadRooms() {
   try {
     const response = await fetch("/api/rooms");
@@ -238,6 +270,7 @@ async function loadRooms() {
     }
     window.__roomList = result.rooms || [];
     renderRooms();
+    renderOverviewRooms();
   } catch {
     roomFormMessage.textContent = "Không thể tải danh sách phòng.";
   }
