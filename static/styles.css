@@ -117,10 +117,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .filter-group { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--forest); cursor: pointer; font-size: 11px; font-weight: 600; }
 .chip.active { border-color: var(--green); background: rgba(66, 107, 89, 0.08); }
-.floor-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.floor-summary > div { padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .summary-label { margin: 0 0 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-.floor-summary strong { font-size: 28px; color: var(--forest); }
 .overview-rooms-section { display: grid; gap: 16px; }
 .overview-section-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .overview-section-header .kicker { margin-bottom: 8px; }
@@ -210,7 +207,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
   h2 { font-size: 28px; }
   .workspace-footer { padding-top: 36px; }
   .dashboard-shell { grid-template-columns: 1fr; }
-  .floor-summary { grid-template-columns: 1fr; }
   .overview-section-header { align-items: flex-start; flex-direction: column; }
   .field-row { grid-template-columns: 1fr; }
   .room-modal { padding: 12px; }

@@ -19,9 +19,6 @@ const confirmDeleteButton = document.querySelector("#confirmDelete");
 document.body.append(roomFormModal, deleteConfirmModal);
 const roomFormTitle = document.querySelector("#roomFormTitle");
 const roomFormMessage = document.querySelector("#roomFormMessage");
-const totalRooms = document.querySelector("#totalRooms");
-const availableRooms = document.querySelector("#availableRooms");
-const occupiedRooms = document.querySelector("#occupiedRooms");
 const successToast = document.querySelector("#successToast");
 const successToastMessage = document.querySelector("#successToastMessage");
 let successToastTimer;
@@ -52,7 +49,7 @@ function setDashboardView(view) {
   });
   document.querySelector(".dashboard-header .kicker").textContent = view === "rooms"
     ? "LOTUS STAY / QUẢN LÝ PHÒNG"
-    : "LOTUS STAY / TỔNG QUAN";
+    : "LOTUS STAY / TRANG CHỦ";
 }
 
 function formatCurrency(value) {
@@ -206,10 +203,6 @@ function applyRoomFilter(filter) {
 function renderRooms() {
   const rooms = window.__roomList || [];
   const filteredRooms = currentFilter === "all" ? rooms : rooms.filter((room) => room.status === currentFilter);
-
-  totalRooms.textContent = String(rooms.length);
-  availableRooms.textContent = String(rooms.filter((room) => room.status === "available").length);
-  occupiedRooms.textContent = String(rooms.filter((room) => room.status === "occupied").length);
 
   if (!filteredRooms.length) {
     roomsGrid.innerHTML = '<article class="room-card room-empty"><div class="room-meta"><h4>Không có phòng nào</h4><p>Thử thay đổi bộ lọc hoặc thêm một phòng mới.</p></div></article>';

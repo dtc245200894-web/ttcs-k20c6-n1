@@ -64,7 +64,7 @@
 
       <section class="dashboard-view hidden" id="dashboardView">
         <header class="dashboard-header">
-          <div><p class="kicker">LOTUS STAY / TỔNG QUAN</p><h2>Xin chào, <span id="userName"></span></h2></div>
+          <div><p class="kicker">LOTUS STAY / TRANG CHỦ</p><h2>Xin chào, <span id="userName"></span></h2></div>
           <button class="logout-button" id="logoutButton" type="button" title="Đăng xuất" aria-label="Đăng xuất">Đăng xuất <span aria-hidden="true">↗</span></button>
         </header>
 
@@ -72,10 +72,10 @@
           <aside class="sidebar-panel">
             <div class="sidebar-section">
               <p class="sidebar-label">MENU</p>
-              <button type="button" class="nav-button active" data-view="overview">Tổng quan</button>
+              <button type="button" class="nav-button active" data-view="overview">Trang chủ</button>
               <button type="button" class="nav-button" data-view="rooms">Quản lý phòng</button>
               <button type="button" class="nav-button" data-view="bookings">Đặt phòng</button>
-              <button type="button" class="nav-button" data-view="customers">Khách hàng</button>
+              <button type="button" class="nav-button" data-view="customers">Doanh thu</button>
             </div>
             <div class="sidebar-section account-box">
               <p class="sidebar-label">TÀI KHOẢN</p>
@@ -86,20 +86,6 @@
 
           <section class="management-panel">
             <section class="dashboard-section active" data-dashboard-view="overview">
-              <div class="floor-summary">
-              <div>
-                <p class="summary-label">Tổng phòng</p>
-                <strong id="totalRooms">0</strong>
-              </div>
-              <div>
-                <p class="summary-label">Phòng trống</p>
-                <strong id="availableRooms">0</strong>
-              </div>
-              <div>
-                <p class="summary-label">Đã thuê</p>
-                <strong id="occupiedRooms">0</strong>
-              </div>
-              </div>
               <div class="overview-rooms-section">
                 <div class="overview-section-header">
                   <div>
