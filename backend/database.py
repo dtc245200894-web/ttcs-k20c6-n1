@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import re
 from pathlib import Path
 
 from werkzeug.security import generate_password_hash
@@ -8,6 +9,7 @@ from werkzeug.security import generate_password_hash
 
 DEMO_EMAIL = "admin@lotusstay.local"
 DEMO_PASSWORD = "Hotel@123"
+DEFAULT_ROOM_TYPES = (("single", "Single"), ("double", "Double"), ("vip", "VIP"))
 
 
 class Database:
@@ -38,13 +40,26 @@ class Database:
             )
             connection.execute(
                 """
+                CREATE TABLE IF NOT EXISTS room_types (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    slug TEXT NOT NULL UNIQUE,
+                    name TEXT NOT NULL UNIQUE COLLATE NOCASE
+                )
+                """
+            )
+            connection.executemany(
+                "INSERT OR IGNORE INTO room_types(slug, name) VALUES (?, ?)",
+                DEFAULT_ROOM_TYPES,
+            )
+
+            rooms_schema = """
                 CREATE TABLE IF NOT EXISTS rooms (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     code TEXT NOT NULL UNIQUE,
                     name TEXT NOT NULL,
                     description TEXT,
                     image_url TEXT,
-                    room_type TEXT NOT NULL CHECK(room_type IN ('single', 'double', 'vip')),
+                    room_type TEXT NOT NULL REFERENCES room_types(slug),
                     price REAL NOT NULL DEFAULT 0,
                     status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available', 'occupied', 'cleaning', 'maintenance')),
                     floor INTEGER NOT NULL DEFAULT 1,
@@ -52,7 +67,28 @@ class Database:
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """
-            )
+            connection.execute(rooms_schema)
+            for row in connection.execute("SELECT DISTINCT room_type FROM rooms"):
+                room_type = str(row["room_type"])
+                connection.execute(
+                    "INSERT OR IGNORE INTO room_types(slug, name) VALUES (?, ?)",
+                    (room_type, room_type.replace("-", " ").title()),
+                )
+
+            rooms_table = connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rooms'"
+            ).fetchone()
+            if rooms_table and re.search(r"CHECK\s*\(\s*room_type\s+IN", rooms_table["sql"], re.IGNORECASE):
+                connection.execute("ALTER TABLE rooms RENAME TO rooms_legacy")
+                connection.execute(rooms_schema)
+                connection.execute(
+                    """
+                    INSERT INTO rooms(id, code, name, description, image_url, room_type, price, status, floor, created_at, updated_at)
+                    SELECT id, code, name, description, image_url, room_type, price, status, floor, created_at, updated_at
+                    FROM rooms_legacy
+                    """
+                )
+                connection.execute("DROP TABLE rooms_legacy")
             existing_user = connection.execute(
                 "SELECT id FROM users WHERE email = ?", (DEMO_EMAIL,)
             ).fetchone()

@@ -75,8 +75,6 @@
               <button type="button" class="nav-button active" data-view="overview">Trang chủ</button>
               <button type="button" class="nav-button" data-view="rooms">Quản lý phòng</button>
               <button type="button" class="nav-button" data-view="room-types">Thể loại phòng</button>
-              <button type="button" class="nav-button" data-view="bookings">Đặt phòng</button>
-              <button type="button" class="nav-button" data-view="customers">Doanh thu</button>
             </div>
             <div class="sidebar-section account-box">
               <p class="sidebar-label">TÀI KHOẢN</p>
@@ -129,11 +127,34 @@
 
             <section class="dashboard-section" data-dashboard-view="room-types">
               <div class="room-types-section">
-                <div>
-                  <p class="kicker">DANH MỤC</p>
-                  <h3>Thể loại phòng</h3>
+                <div class="room-types-heading">
+                  <div>
+                    <p class="kicker">DANH MỤC</p>
+                    <h3>Thể loại phòng</h3>
+                  </div>
+                  <button class="primary-button" id="openRoomTypeForm" type="button">+ Thêm thể loại</button>
                 </div>
-                <ul class="room-types-list" id="roomTypesList" aria-label="Các thể loại phòng"></ul>
+                <form class="room-type-form hidden" id="roomTypeForm" novalidate>
+                  <div>
+                    <label for="roomTypeName">Tên thể loại mới</label>
+                    <input id="roomTypeName" name="name" type="text" maxlength="40" placeholder="Ví dụ: Family" required>
+                  </div>
+                  <p class="form-message" id="roomTypeFormMessage" role="alert" aria-live="polite"></p>
+                  <div class="form-actions">
+                    <button class="secondary-button" id="cancelRoomTypeForm" type="button">Hủy</button>
+                    <button class="primary-button" type="submit">Lưu thể loại</button>
+                  </div>
+                </form>
+                <div class="room-type-picker">
+                  <label for="roomTypeCategory">Chọn thể loại phòng</label>
+                  <select id="roomTypeCategory" aria-label="Chọn thể loại phòng">
+                    <option value="">Chọn thể loại phòng</option>
+                  </select>
+                </div>
+                <section class="type-rooms-section" aria-labelledby="typeRoomsTitle">
+                  <h4 id="typeRoomsTitle">Phòng theo thể loại</h4>
+                  <div class="type-rooms-grid" id="typeRoomsGrid" aria-live="polite"></div>
+                </section>
               </div>
             </section>
           </section>
@@ -160,11 +181,7 @@
               <div class="field-row two-col">
                 <div>
                   <label for="roomType">Loại phòng</label>
-                  <select id="roomType" name="room_type">
-                    <option value="single">Single</option>
-                    <option value="double">Double</option>
-                    <option value="vip">VIP</option>
-                  </select>
+                  <select id="roomType" name="room_type"></select>
                 </div>
                 <div>
                   <label for="roomFloor">Tầng</label>
