@@ -19,6 +19,7 @@ const confirmDeleteButton = document.querySelector("#confirmDelete");
 document.body.append(roomFormModal, deleteConfirmModal);
 const roomFormTitle = document.querySelector("#roomFormTitle");
 const roomFormMessage = document.querySelector("#roomFormMessage");
+const roomTypeFormMessage = document.querySelector("#roomTypeFormMessage");
 const successToast = document.querySelector("#successToast");
 const successToastMessage = document.querySelector("#successToastMessage");
 let successToastTimer;
@@ -30,13 +31,14 @@ const roomStatusMap = {
   maintenance: "Bảo trì",
 };
 
-const roomTypeMap = {
+let roomTypeMap = {
   single: "Single",
   double: "Double",
   vip: "VIP",
 };
 
 let currentFilter = "all";
+let selectedRoomType = null;
 let pendingDeleteRoomId = null;
 let deleteTrigger = null;
 
@@ -52,12 +54,98 @@ function setDashboardView(view) {
     "room-types": "THỂ LOẠI PHÒNG",
   };
   document.querySelector(".dashboard-header .kicker").textContent = `LOTUS STAY / ${viewLabels[view] || "TRANG CHỦ"}`;
+  fitRoomTypeResults();
+}
+
+function fitRoomTypeResults() {
+  const section = document.querySelector("[data-dashboard-view='room-types']");
+  const grid = document.querySelector("#typeRoomsGrid");
+  if (!section.classList.contains("active")) return;
+  const sidebarBottom = document.querySelector(".sidebar-panel").getBoundingClientRect().bottom;
+  const gridTop = grid.getBoundingClientRect().top;
+  if (gridTop >= sidebarBottom) {
+    grid.style.maxHeight = "";
+    return;
+  }
+  grid.style.maxHeight = `${Math.max(0, Math.floor(sidebarBottom - gridTop))}px`;
 }
 
 function renderRoomTypes() {
-  document.querySelector("#roomTypesList").innerHTML = Object.entries(roomTypeMap).map(([type, label]) => `
-    <li class="room-type-item type-${type}">${label}</li>
+  const rooms = window.__roomList || [];
+  const roomTypePicker = document.querySelector("#roomTypeCategory");
+  const options = Object.entries(roomTypeMap).map(([type, label]) => {
+    const count = rooms.filter((room) => room.room_type === type).length;
+    return new Option(`${label} (${count} phòng)`, type);
+  });
+  roomTypePicker.replaceChildren(new Option("Chọn thể loại phòng", ""), ...options);
+  roomTypePicker.value = selectedRoomType || "";
+  renderTypeRooms();
+  fitRoomTypeResults();
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character]);
+}
+
+function renderTypeRooms() {
+  const title = document.querySelector("#typeRoomsTitle");
+  const grid = document.querySelector("#typeRoomsGrid");
+  if (!selectedRoomType) {
+    title.textContent = "Phòng theo thể loại";
+    grid.innerHTML = '<p class="type-rooms-empty">Chọn một thể loại để xem danh sách phòng.</p>';
+    return;
+  }
+
+  const rooms = (window.__roomList || []).filter((room) => room.room_type === selectedRoomType);
+  title.textContent = `Phòng ${roomTypeMap[selectedRoomType]}`;
+  if (!rooms.length) {
+    grid.innerHTML = '<p class="type-rooms-empty">Chưa có phòng thuộc thể loại này.</p>';
+    return;
+  }
+
+  grid.innerHTML = rooms.map((room) => `
+    <article class="type-room-card">
+      <img src="${escapeHtml(room.image_url || "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=900&q=80")}" alt="${escapeHtml(room.name)}">
+      <div class="type-room-details">
+        <div class="type-room-heading">
+          <strong>${escapeHtml(room.code)}</strong>
+          <span class="room-status status-${escapeHtml(room.status)}">${escapeHtml(roomStatusMap[room.status] || room.status)}</span>
+        </div>
+        <h5>${escapeHtml(room.name)}</h5>
+        <p>${escapeHtml(room.description || "Khách sạn Lotus Stay.")}</p>
+        <div class="type-room-footer"><span>Tầng ${escapeHtml(room.floor)}</span><strong>${formatCurrency(room.price)}</strong></div>
+      </div>
+    </article>
   `).join("");
+}
+
+async function loadRoomTypes() {
+  try {
+    const response = await fetch("/api/room-types");
+    const result = await response.json();
+    if (!response.ok) {
+      roomTypeFormMessage.textContent = result.message || "Không thể tải thể loại phòng.";
+      return;
+    }
+
+    const roomTypes = result.room_types || [];
+    roomTypeMap = Object.fromEntries(roomTypes.map((roomType) => [roomType.slug, roomType.name]));
+    const roomTypeSelect = document.querySelector("#roomType");
+    const currentRoomType = roomTypeSelect.value;
+    roomTypeSelect.replaceChildren(...roomTypes.map((roomType) => new Option(roomType.name, roomType.slug)));
+    if (roomTypes.some((roomType) => roomType.slug === currentRoomType)) {
+      roomTypeSelect.value = currentRoomType;
+    }
+    renderRoomTypes();
+  } catch {
+    roomTypeFormMessage.textContent = "Không thể tải thể loại phòng.";
+  }
 }
 
 function formatCurrency(value) {
@@ -82,6 +170,7 @@ function showDashboard(user) {
   document.body.classList.add("dashboard-mode");
   setDashboardView("overview");
   renderRoomTypes();
+  loadRoomTypes();
   loadRooms();
 }
 
@@ -230,7 +319,7 @@ function renderRooms() {
         <p>${room.description || "Khách sạn Lotus Stay."}</p>
       </div>
       <div class="room-footer">
-        <span class="room-type type-${room.room_type}">${roomTypeMap[room.room_type] || room.room_type}</span>
+        <span class="room-type type-${escapeHtml(room.room_type)}">${escapeHtml(roomTypeMap[room.room_type] || room.room_type)}</span>
         <strong>${formatCurrency(room.price)}</strong>
       </div>
       <div class="room-actions">
@@ -281,6 +370,7 @@ async function loadRooms() {
       return;
     }
     window.__roomList = result.rooms || [];
+    renderRoomTypes();
     renderRooms();
     renderOverviewRooms();
   } catch {
@@ -439,6 +529,49 @@ document.querySelectorAll(".nav-button[data-view]").forEach((button) => {
     }
   });
 });
+const roomTypeForm = document.querySelector("#roomTypeForm");
+document.querySelector("#openRoomTypeForm").addEventListener("click", () => {
+  roomTypeForm.classList.remove("hidden");
+  document.querySelector("#roomTypeName").focus();
+  fitRoomTypeResults();
+});
+document.querySelector("#cancelRoomTypeForm").addEventListener("click", () => {
+  roomTypeForm.reset();
+  roomTypeForm.classList.add("hidden");
+  roomTypeFormMessage.textContent = "";
+  fitRoomTypeResults();
+});
+roomTypeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  roomTypeFormMessage.textContent = "";
+  if (!roomTypeForm.reportValidity()) return;
+
+  try {
+    const response = await fetch("/api/room-types", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: document.querySelector("#roomTypeName").value }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      roomTypeFormMessage.textContent = result.message || "Không thể thêm thể loại phòng.";
+      return;
+    }
+
+    selectedRoomType = result.room_type.slug;
+    roomTypeForm.reset();
+    roomTypeForm.classList.add("hidden");
+    await loadRoomTypes();
+    showSuccessToast(result.message);
+  } catch {
+    roomTypeFormMessage.textContent = "Không thể thêm thể loại phòng. Vui lòng thử lại.";
+  }
+});
+document.querySelector("#roomTypeCategory").addEventListener("change", (event) => {
+  selectedRoomType = event.currentTarget.value || null;
+  renderRoomTypes();
+});
+window.addEventListener("resize", fitRoomTypeResults);
 roomForm.addEventListener("submit", saveRoom);
 cancelDeleteButton.addEventListener("click", closeDeleteConfirmation);
 confirmDeleteButton.addEventListener("click", async () => {

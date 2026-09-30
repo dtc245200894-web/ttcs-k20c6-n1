@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import unicodedata
 from typing import Any
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -55,7 +56,6 @@ class AuthService:
 
 
 class RoomService:
-    ROOM_TYPES = {"single", "double", "vip"}
     ROOM_STATUSES = {"available", "occupied", "cleaning", "maintenance"}
 
     def __init__(self, database: Database) -> None:
@@ -86,7 +86,11 @@ class RoomService:
             raise ValueError("Tên phòng không hợp lệ.")
         if not image_url:
             raise ValueError("Vui lòng nhập đường dẫn hình ảnh phòng.")
-        if room_type not in self.ROOM_TYPES:
+        with self.database.connect() as connection:
+            room_type_exists = connection.execute(
+                "SELECT 1 FROM room_types WHERE slug = ?", (room_type,)
+            ).fetchone()
+        if room_type_exists is None:
             raise ValueError("Loại phòng không hợp lệ.")
         if status not in self.ROOM_STATUSES:
             raise ValueError("Trạng thái phòng không hợp lệ.")
@@ -105,6 +109,35 @@ class RoomService:
             "status": status,
             "floor": floor,
         }
+
+    def list_room_types(self) -> list[dict[str, Any]]:
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                "SELECT slug, name FROM room_types ORDER BY id"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def create_room_type(self, name: str) -> tuple[bool, str, dict[str, str] | None]:
+        if not isinstance(name, str):
+            return False, "Tên thể loại không hợp lệ.", None
+        name = name.strip()
+        if not name or len(name) > 40:
+            return False, "Tên thể loại cần có từ 1 đến 40 ký tự.", None
+
+        normalized_name = unicodedata.normalize("NFKD", name.lower().replace("đ", "d"))
+        ascii_name = normalized_name.encode("ascii", "ignore").decode("ascii")
+        slug = re.sub(r"[^a-z0-9]+", "-", ascii_name).strip("-")
+        if not slug:
+            return False, "Tên thể loại cần chứa chữ cái hoặc chữ số không dấu.", None
+
+        try:
+            with self.database.connect() as connection:
+                connection.execute(
+                    "INSERT INTO room_types(slug, name) VALUES (?, ?)", (slug, name)
+                )
+        except sqlite3.IntegrityError:
+            return False, "Thể loại phòng này đã tồn tại.", None
+        return True, "Đã thêm thể loại phòng.", {"slug": slug, "name": name}
 
     def list_rooms(self) -> list[dict[str, Any]]:
         with self.database.connect() as connection:
