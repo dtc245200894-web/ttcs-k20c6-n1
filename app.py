@@ -83,6 +83,20 @@ def create_room_type():
     return jsonify({"ok": ok, "message": message, "room_type": room_type}), 201 if ok else 400
 
 
+@app.put("/api/room-types/move-rooms")
+def move_rooms_to_room_type():
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    ok, message, moved_count = room_service.move_rooms_to_room_type(
+        payload.get("source_slug", ""),
+        payload.get("target_slug", ""),
+        payload.get("room_ids", []),
+    )
+    return jsonify({"ok": ok, "message": message, "moved_count": moved_count}), 200 if ok else 400
+
+
 @app.post("/api/rooms")
 def create_room():
     if not session.get("user"):

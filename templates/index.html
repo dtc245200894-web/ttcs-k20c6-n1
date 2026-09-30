@@ -132,19 +132,11 @@
                     <p class="kicker">DANH MỤC</p>
                     <h3>Thể loại phòng</h3>
                   </div>
-                  <button class="primary-button" id="openRoomTypeForm" type="button">+ Thêm thể loại</button>
+                  <div class="room-type-actions">
+                    <button class="primary-button" id="openRoomTypeForm" type="button">+ Thêm thể loại</button>
+                    <button class="primary-button" id="openMoveRoomTypeForm" type="button">Cập nhật thể loại</button>
+                  </div>
                 </div>
-                <form class="room-type-form hidden" id="roomTypeForm" novalidate>
-                  <div>
-                    <label for="roomTypeName">Tên thể loại mới</label>
-                    <input id="roomTypeName" name="name" type="text" maxlength="40" placeholder="Ví dụ: Family" required>
-                  </div>
-                  <p class="form-message" id="roomTypeFormMessage" role="alert" aria-live="polite"></p>
-                  <div class="form-actions">
-                    <button class="secondary-button" id="cancelRoomTypeForm" type="button">Hủy</button>
-                    <button class="primary-button" type="submit">Lưu thể loại</button>
-                  </div>
-                </form>
                 <div class="room-type-picker">
                   <label for="roomTypeCategory">Chọn thể loại phòng</label>
                   <select id="roomTypeCategory" aria-label="Chọn thể loại phòng">
@@ -214,6 +206,58 @@
             </form>
           </aside>
           </div>
+          <div class="room-modal hidden" id="addRoomTypeModal">
+            <aside class="form-panel is-open" role="dialog" aria-modal="true" aria-labelledby="addRoomTypeTitle">
+              <div class="form-panel-header">
+                <p class="kicker">DANH MỤC</p>
+                <h3 id="addRoomTypeTitle">Thêm thể loại phòng</h3>
+              </div>
+              <form class="room-type-form" id="roomTypeForm" novalidate>
+                <div>
+                  <label for="roomTypeName">Tên thể loại mới</label>
+                  <input id="roomTypeName" name="name" type="text" maxlength="40" placeholder="Ví dụ: Family" required>
+                </div>
+                <p class="form-message" id="roomTypeFormMessage" role="alert" aria-live="polite"></p>
+                <div class="form-actions">
+                  <button class="secondary-button" id="cancelRoomTypeForm" type="button">Hủy</button>
+                  <button class="primary-button" type="submit">Lưu thể loại</button>
+                </div>
+              </form>
+            </aside>
+          </div>
+          <div class="room-modal hidden" id="moveRoomTypeModal">
+            <aside class="form-panel is-open" role="dialog" aria-modal="true" aria-labelledby="moveRoomTypeTitle">
+              <div class="form-panel-header">
+                <p class="kicker">CẬP NHẬT DANH MỤC</p>
+                <h3 id="moveRoomTypeTitle">Chuyển phòng sang thể loại khác</h3>
+              </div>
+              <form class="move-room-type-form" id="moveRoomTypeForm" novalidate>
+                <div>
+                  <label for="sourceRoomType">Thể loại hiện tại</label>
+                  <select id="sourceRoomType" required>
+                    <option value="">Chọn thể loại cần chuyển</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="targetRoomType">Thể loại đích</label>
+                  <select id="targetRoomType" required>
+                    <option value="">Chọn thể loại đích</option>
+                  </select>
+                </div>
+                <fieldset class="move-room-type-rooms">
+                  <legend>Chọn phòng cần chuyển</legend>
+                  <div class="move-room-type-room-list" id="moveRoomTypeRoomList" aria-live="polite">
+                    <p class="move-room-type-empty">Chọn thể loại hiện tại để xem danh sách phòng.</p>
+                  </div>
+                </fieldset>
+                <p class="form-message" id="moveRoomTypeFormMessage" role="alert" aria-live="polite"></p>
+                <div class="form-actions">
+                  <button class="secondary-button" id="cancelMoveRoomTypeForm" type="button">Hủy</button>
+                  <button class="primary-button" type="submit">Chuyển phòng</button>
+                </div>
+              </form>
+            </aside>
+          </div>
           <div class="confirm-modal hidden" id="deleteConfirmModal">
             <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
               <p class="kicker">XÁC NHẬN THAO TÁC</p>
@@ -222,6 +266,17 @@
               <div class="confirm-actions">
                 <button class="secondary-button" id="cancelDelete" type="button">Hủy</button>
                 <button class="danger-button" id="confirmDelete" type="button">Xác nhận</button>
+              </div>
+            </section>
+          </div>
+          <div class="confirm-modal hidden" id="moveRoomTypeConfirmModal">
+            <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="moveRoomTypeConfirmTitle">
+              <p class="kicker">XÁC NHẬN THAO TÁC</p>
+              <h3 id="moveRoomTypeConfirmTitle">Chuyển phòng sang thể loại khác?</h3>
+              <p class="confirm-message" id="moveRoomTypeConfirmMessage"></p>
+              <div class="confirm-actions">
+                <button class="secondary-button" id="cancelMoveRoomTypeConfirm" type="button">Hủy</button>
+                <button class="primary-button" id="confirmMoveRoomType" type="button">Xác nhận chuyển</button>
               </div>
             </section>
           </div>

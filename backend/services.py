@@ -139,6 +139,47 @@ class RoomService:
             return False, "Thể loại phòng này đã tồn tại.", None
         return True, "Đã thêm thể loại phòng.", {"slug": slug, "name": name}
 
+    def move_rooms_to_room_type(
+        self, source_slug: str, target_slug: str, room_ids: list[int]
+    ) -> tuple[bool, str, int]:
+        if not isinstance(source_slug, str) or not isinstance(target_slug, str):
+            return False, "Thể loại phòng không hợp lệ.", 0
+        source_slug = source_slug.strip()
+        target_slug = target_slug.strip()
+        if not source_slug or not target_slug:
+            return False, "Vui lòng chọn thể loại nguồn và thể loại đích.", 0
+        if source_slug == target_slug:
+            return False, "Thể loại nguồn và đích phải khác nhau.", 0
+        if not isinstance(room_ids, list) or not room_ids:
+            return False, "Vui lòng chọn ít nhất một phòng cần chuyển.", 0
+        if any(isinstance(room_id, bool) or not isinstance(room_id, int) or room_id < 1 for room_id in room_ids):
+            return False, "Danh sách phòng cần chuyển không hợp lệ.", 0
+        room_ids = list(dict.fromkeys(room_ids))
+
+        with self.database.connect() as connection:
+            room_types = connection.execute(
+                "SELECT slug FROM room_types WHERE slug IN (?, ?)",
+                (source_slug, target_slug),
+            ).fetchall()
+            if len(room_types) != 2:
+                return False, "Thể loại nguồn hoặc đích không tồn tại.", 0
+
+            placeholders = ", ".join("?" for _ in room_ids)
+            matching_rooms = connection.execute(
+                f"SELECT COUNT(*) FROM rooms WHERE room_type = ? AND id IN ({placeholders})",
+                (source_slug, *room_ids),
+            ).fetchone()[0]
+            if matching_rooms != len(room_ids):
+                return False, "Một số phòng đã chọn không còn thuộc thể loại hiện tại.", 0
+
+            updated = connection.execute(
+                f"UPDATE rooms SET room_type = ?, updated_at = CURRENT_TIMESTAMP WHERE room_type = ? AND id IN ({placeholders})",
+                (target_slug, source_slug, *room_ids),
+            )
+            moved_count = updated.rowcount
+
+        return True, f"Đã chuyển {moved_count} phòng đã chọn sang thể loại mới.", moved_count
+
     def list_rooms(self) -> list[dict[str, Any]]:
         with self.database.connect() as connection:
             rows = connection.execute(
