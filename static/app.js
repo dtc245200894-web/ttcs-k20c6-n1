@@ -10,16 +10,23 @@ const overviewRoomsGrid = document.querySelector("#overviewRoomsGrid");
 const roomForm = document.querySelector("#roomForm");
 const roomFormPanel = document.querySelector("#roomFormPanel");
 const roomFormModal = document.querySelector("#roomFormModal");
+const addRoomTypeModal = document.querySelector("#addRoomTypeModal");
+const moveRoomTypeModal = document.querySelector("#moveRoomTypeModal");
 const deleteConfirmModal = document.querySelector("#deleteConfirmModal");
+const moveRoomTypeConfirmModal = document.querySelector("#moveRoomTypeConfirmModal");
 const deleteConfirmTitle = document.querySelector("#deleteConfirmTitle");
 const deleteConfirmKicker = document.querySelector("#deleteConfirmModal .kicker");
 const deleteConfirmMessage = document.querySelector("#deleteConfirmMessage");
 const cancelDeleteButton = document.querySelector("#cancelDelete");
 const confirmDeleteButton = document.querySelector("#confirmDelete");
-document.body.append(roomFormModal, deleteConfirmModal);
+const cancelMoveRoomTypeConfirmButton = document.querySelector("#cancelMoveRoomTypeConfirm");
+const confirmMoveRoomTypeButton = document.querySelector("#confirmMoveRoomType");
+const moveRoomTypeConfirmMessage = document.querySelector("#moveRoomTypeConfirmMessage");
+document.body.append(roomFormModal, addRoomTypeModal, moveRoomTypeModal, deleteConfirmModal, moveRoomTypeConfirmModal);
 const roomFormTitle = document.querySelector("#roomFormTitle");
 const roomFormMessage = document.querySelector("#roomFormMessage");
 const roomTypeFormMessage = document.querySelector("#roomTypeFormMessage");
+const moveRoomTypeFormMessage = document.querySelector("#moveRoomTypeFormMessage");
 const successToast = document.querySelector("#successToast");
 const successToastMessage = document.querySelector("#successToastMessage");
 let successToastTimer;
@@ -41,6 +48,7 @@ let currentFilter = "all";
 let selectedRoomType = null;
 let pendingDeleteRoomId = null;
 let deleteTrigger = null;
+let pendingRoomTypeTransfer = null;
 
 function setDashboardView(view) {
   document.querySelectorAll(".nav-button[data-view]").forEach((button) => {
@@ -125,6 +133,31 @@ function renderTypeRooms() {
   `).join("");
 }
 
+function renderMoveRoomChoices() {
+  const list = document.querySelector("#moveRoomTypeRoomList");
+  const sourceSlug = document.querySelector("#sourceRoomType").value;
+  if (!sourceSlug) {
+    list.innerHTML = '<p class="move-room-type-empty">Chọn thể loại hiện tại để xem danh sách phòng.</p>';
+    return;
+  }
+
+  const rooms = (window.__roomList || []).filter((room) => room.room_type === sourceSlug);
+  if (!rooms.length) {
+    list.innerHTML = '<p class="move-room-type-empty">Thể loại này chưa có phòng.</p>';
+    return;
+  }
+
+  list.innerHTML = rooms.map((room) => `
+    <label class="move-room-type-room-option">
+      <input type="checkbox" name="room_ids" value="${escapeHtml(room.id)}">
+      <span>
+        <strong>${escapeHtml(room.name)}</strong>
+        <small>${escapeHtml(room.code)} · Tầng ${escapeHtml(room.floor)}</small>
+      </span>
+    </label>
+  `).join("");
+}
+
 async function loadRoomTypes() {
   try {
     const response = await fetch("/api/room-types");
@@ -136,6 +169,14 @@ async function loadRoomTypes() {
 
     const roomTypes = result.room_types || [];
     roomTypeMap = Object.fromEntries(roomTypes.map((roomType) => [roomType.slug, roomType.name]));
+    const sourceRoomType = document.querySelector("#sourceRoomType");
+    const targetRoomType = document.querySelector("#targetRoomType");
+    const previousSource = sourceRoomType.value;
+    const previousTarget = targetRoomType.value;
+    sourceRoomType.replaceChildren(new Option("Chọn thể loại cần chuyển", ""), ...roomTypes.map((roomType) => new Option(roomType.name, roomType.slug)));
+    targetRoomType.replaceChildren(new Option("Chọn thể loại đích", ""), ...roomTypes.map((roomType) => new Option(roomType.name, roomType.slug)));
+    sourceRoomType.value = roomTypes.some((roomType) => roomType.slug === previousSource) ? previousSource : "";
+    targetRoomType.value = roomTypes.some((roomType) => roomType.slug === previousTarget) ? previousTarget : "";
     const roomTypeSelect = document.querySelector("#roomType");
     const currentRoomType = roomTypeSelect.value;
     roomTypeSelect.replaceChildren(...roomTypes.map((roomType) => new Option(roomType.name, roomType.slug)));
@@ -531,15 +572,98 @@ document.querySelectorAll(".nav-button[data-view]").forEach((button) => {
 });
 const roomTypeForm = document.querySelector("#roomTypeForm");
 document.querySelector("#openRoomTypeForm").addEventListener("click", () => {
-  roomTypeForm.classList.remove("hidden");
+  addRoomTypeModal.classList.remove("hidden");
   document.querySelector("#roomTypeName").focus();
-  fitRoomTypeResults();
 });
 document.querySelector("#cancelRoomTypeForm").addEventListener("click", () => {
   roomTypeForm.reset();
-  roomTypeForm.classList.add("hidden");
+  addRoomTypeModal.classList.add("hidden");
   roomTypeFormMessage.textContent = "";
-  fitRoomTypeResults();
+});
+const moveRoomTypeForm = document.querySelector("#moveRoomTypeForm");
+document.querySelector("#openMoveRoomTypeForm").addEventListener("click", () => {
+  moveRoomTypeModal.classList.remove("hidden");
+  renderMoveRoomChoices();
+  document.querySelector("#sourceRoomType").focus();
+});
+document.querySelector("#cancelMoveRoomTypeForm").addEventListener("click", () => {
+  moveRoomTypeForm.reset();
+  moveRoomTypeModal.classList.add("hidden");
+  moveRoomTypeFormMessage.textContent = "";
+});
+document.querySelector("#sourceRoomType").addEventListener("change", () => {
+  moveRoomTypeFormMessage.textContent = "";
+  renderMoveRoomChoices();
+});
+function closeMoveRoomTypeConfirmation() {
+  moveRoomTypeConfirmModal.classList.add("hidden");
+  pendingRoomTypeTransfer = null;
+}
+
+cancelMoveRoomTypeConfirmButton.addEventListener("click", closeMoveRoomTypeConfirmation);
+
+confirmMoveRoomTypeButton.addEventListener("click", async () => {
+  if (!pendingRoomTypeTransfer) return;
+  const transfer = pendingRoomTypeTransfer;
+  confirmMoveRoomTypeButton.disabled = true;
+  cancelMoveRoomTypeConfirmButton.disabled = true;
+  try {
+    const response = await fetch("/api/room-types/move-rooms", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(transfer),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      moveRoomTypeFormMessage.textContent = result.message || "Không thể cập nhật thể loại phòng.";
+      closeMoveRoomTypeConfirmation();
+      return;
+    }
+
+    closeMoveRoomTypeConfirmation();
+    selectedRoomType = transfer.target_slug;
+    moveRoomTypeForm.reset();
+    moveRoomTypeModal.classList.add("hidden");
+    await loadRooms();
+    showSuccessToast(result.message);
+  } catch {
+    moveRoomTypeFormMessage.textContent = "Không thể cập nhật thể loại phòng. Vui lòng thử lại.";
+    closeMoveRoomTypeConfirmation();
+  } finally {
+    confirmMoveRoomTypeButton.disabled = false;
+    cancelMoveRoomTypeConfirmButton.disabled = false;
+  }
+});
+
+moveRoomTypeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  moveRoomTypeFormMessage.textContent = "";
+  if (!moveRoomTypeForm.reportValidity()) return;
+
+  const sourceSlug = document.querySelector("#sourceRoomType").value;
+  const targetSlug = document.querySelector("#targetRoomType").value;
+  const roomIds = Array.from(
+    moveRoomTypeForm.querySelectorAll('input[name="room_ids"]:checked'),
+    (checkbox) => Number(checkbox.value),
+  );
+  if (!roomIds.length) {
+    moveRoomTypeFormMessage.textContent = "Vui lòng chọn ít nhất một phòng cần chuyển.";
+    return;
+  }
+  if (sourceSlug === targetSlug) {
+    moveRoomTypeFormMessage.textContent = "Thể loại nguồn và đích phải khác nhau.";
+    return;
+  }
+  const sourceName = roomTypeMap[sourceSlug];
+  const targetName = roomTypeMap[targetSlug];
+  pendingRoomTypeTransfer = {
+    source_slug: sourceSlug,
+    target_slug: targetSlug,
+    room_ids: roomIds,
+  };
+  moveRoomTypeConfirmMessage.textContent = `Chuyển ${roomIds.length} phòng đã chọn từ "${sourceName}" sang "${targetName}"?`;
+  moveRoomTypeConfirmModal.classList.remove("hidden");
+  cancelMoveRoomTypeConfirmButton.focus();
 });
 roomTypeForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -560,7 +684,7 @@ roomTypeForm.addEventListener("submit", async (event) => {
 
     selectedRoomType = result.room_type.slug;
     roomTypeForm.reset();
-    roomTypeForm.classList.add("hidden");
+    addRoomTypeModal.classList.add("hidden");
     await loadRoomTypes();
     showSuccessToast(result.message);
   } catch {
