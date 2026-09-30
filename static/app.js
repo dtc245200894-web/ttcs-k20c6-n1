@@ -47,9 +47,17 @@ function setDashboardView(view) {
   document.querySelectorAll("[data-dashboard-view]").forEach((section) => {
     section.classList.toggle("active", section.dataset.dashboardView === view);
   });
-  document.querySelector(".dashboard-header .kicker").textContent = view === "rooms"
-    ? "LOTUS STAY / QUẢN LÝ PHÒNG"
-    : "LOTUS STAY / TRANG CHỦ";
+  const viewLabels = {
+    rooms: "QUẢN LÝ PHÒNG",
+    "room-types": "THỂ LOẠI PHÒNG",
+  };
+  document.querySelector(".dashboard-header .kicker").textContent = `LOTUS STAY / ${viewLabels[view] || "TRANG CHỦ"}`;
+}
+
+function renderRoomTypes() {
+  document.querySelector("#roomTypesList").innerHTML = Object.entries(roomTypeMap).map(([type, label]) => `
+    <li class="room-type-item type-${type}">${label}</li>
+  `).join("");
 }
 
 function formatCurrency(value) {
@@ -73,6 +81,7 @@ function showDashboard(user) {
   document.querySelector(".page-shell").classList.add("dashboard-mode");
   document.body.classList.add("dashboard-mode");
   setDashboardView("overview");
+  renderRoomTypes();
   loadRooms();
 }
 
@@ -425,7 +434,7 @@ document.querySelector("#openRoomForm").addEventListener("click", () => openRoom
 document.querySelector("#cancelRoomForm").addEventListener("click", resetRoomForm);
 document.querySelectorAll(".nav-button[data-view]").forEach((button) => {
   button.addEventListener("click", () => {
-    if (button.dataset.view === "overview" || button.dataset.view === "rooms") {
+    if (["overview", "rooms", "room-types"].includes(button.dataset.view)) {
       setDashboardView(button.dataset.view);
     }
   });
