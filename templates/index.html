@@ -74,6 +74,7 @@
               <p class="sidebar-label">MENU</p>
               <button type="button" class="nav-button active" data-view="overview">Trang chủ</button>
               <button type="button" class="nav-button" data-view="rooms">Quản lý phòng</button>
+              <button type="button" class="nav-button" data-view="room-types">Thể loại phòng</button>
               <button type="button" class="nav-button" data-view="bookings">Đặt phòng</button>
               <button type="button" class="nav-button" data-view="customers">Doanh thu</button>
             </div>
@@ -123,6 +124,16 @@
                   </div>
                 </div>
                 <div class="rooms-grid" id="roomsGrid" aria-live="polite"></div>
+              </div>
+            </section>
+
+            <section class="dashboard-section" data-dashboard-view="room-types">
+              <div class="room-types-section">
+                <div>
+                  <p class="kicker">DANH MỤC</p>
+                  <h3>Thể loại phòng</h3>
+                </div>
+                <ul class="room-types-list" id="roomTypesList" aria-label="Các thể loại phòng"></ul>
               </div>
             </section>
           </section>
