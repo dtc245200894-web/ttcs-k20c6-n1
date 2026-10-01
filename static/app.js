@@ -269,6 +269,7 @@ function resetRoomForm() {
   document.querySelector("#roomPrice").value = "1000000";
   document.querySelector("#roomFloor").value = "1";
   document.querySelector("#roomStatus").value = "available";
+  document.querySelector("#roomStatus").disabled = true;
   roomFormMessage.textContent = "";
   roomFormMessage.classList.remove("success");
   roomFormPanel.classList.remove("is-open");
@@ -288,6 +289,7 @@ function openRoomForm(room = null) {
     document.querySelector("#roomPrice").value = "1000000";
     document.querySelector("#roomFloor").value = "1";
     document.querySelector("#roomStatus").value = "available";
+    document.querySelector("#roomStatus").disabled = true;
     roomFormMessage.textContent = "";
     roomFormMessage.classList.remove("success");
     return;
@@ -307,6 +309,7 @@ function openRoomForm(room = null) {
   document.querySelector("#roomFloor").value = room.floor || 1;
   document.querySelector("#roomPrice").value = room.price || 0;
   document.querySelector("#roomStatus").value = room.status || "available";
+  document.querySelector("#roomStatus").disabled = false;
   roomFormMessage.textContent = "";
   roomFormMessage.classList.remove("success");
 }
@@ -419,7 +422,7 @@ function renderRooms() {
       </div>
       <div class="room-actions">
         <button class="mini-button" type="button" data-action="edit" data-room-id="${room.id}">Cập nhật</button>
-        <button class="mini-button danger" type="button" data-action="delete" data-room-id="${room.id}" ${["available", "occupied", "cleaning"].includes(room.status) ? "" : 'disabled title="Chỉ xóa được phòng đang trống"'}>Xóa</button>
+        <button class="mini-button danger" type="button" data-action="delete" data-room-id="${room.id}">Xóa</button>
       </div>
     </article>
   `).join("");
@@ -849,7 +852,7 @@ roomsGrid.addEventListener("click", async (event) => {
 
   if (action === "delete") {
     const room = (window.__roomList || []).find((item) => String(item.id) === String(roomId));
-    if (room?.status === "occupied" || room?.status === "cleaning") {
+    if (room && room.status !== "available") {
       showDeleteBlockedNotice(button);
       return;
     }

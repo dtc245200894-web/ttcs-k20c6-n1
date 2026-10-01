@@ -218,6 +218,8 @@ class RoomService:
         return [dict(row) for row in rows]
 
     def create_room(self, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any] | None]:
+        if isinstance(payload, dict):
+            payload = {**payload, "status": "available"}
         try:
             normalized = self._normalize_room_data(payload)
         except ValueError as exc:
