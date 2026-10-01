@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+from uuid import uuid4
 
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, render_template, request, session, url_for
+from werkzeug.utils import secure_filename
 
 from backend.database import Database
 from backend.services import AuthService, RoomService
@@ -12,10 +15,49 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "hotel-management-local-development-key")
 app.config["DATABASE_PATH"] = os.environ.get("DATABASE_PATH", os.path.join(ROOT, "hotel_management.db"))
+app.config["UPLOAD_FOLDER"] = os.path.join(ROOT, "static", "uploads")
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
 database = Database(app.config["DATABASE_PATH"])
 auth_service = AuthService(database)
 room_service = RoomService(database)
+
+
+def _room_payload_from_request():
+    if request.mimetype == "multipart/form-data":
+        payload = request.form.to_dict()
+    else:
+        payload = request.get_json(silent=True) or {}
+
+    uploaded_image = request.files.get("image")
+    if uploaded_image is None or not uploaded_image.filename:
+        return payload, None, None
+
+    extension = Path(secure_filename(uploaded_image.filename)).suffix.lower()
+    header = uploaded_image.stream.read(12)
+    uploaded_image.stream.seek(0)
+    valid_image = (
+        extension in {".jpg", ".jpeg"} and header.startswith(b"\xff\xd8\xff")
+    ) or (
+        extension == ".png" and header.startswith(b"\x89PNG\r\n\x1a\n")
+    ) or (
+        extension == ".webp" and header[:4] == b"RIFF" and header[8:12] == b"WEBP"
+    )
+    if not valid_image:
+        return None, None, "Tệp không hợp lệ. Vui lòng chọn ảnh JPG, PNG hoặc WebP."
+
+    filename = f"{uuid4().hex}{extension}"
+    upload_folder = Path(app.config["UPLOAD_FOLDER"])
+    upload_folder.mkdir(parents=True, exist_ok=True)
+    saved_path = upload_folder / filename
+    uploaded_image.save(saved_path)
+    payload["image_url"] = url_for("static", filename=f"uploads/{filename}")
+    return payload, saved_path, None
+
+
+def _remove_upload(path):
+    if path is not None:
+        path.unlink(missing_ok=True)
 
 
 @app.get("/")
@@ -83,6 +125,15 @@ def create_room_type():
     return jsonify({"ok": ok, "message": message, "room_type": room_type}), 201 if ok else 400
 
 
+@app.delete("/api/room-types/<string:slug>")
+def delete_room_type(slug):
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+
+    ok, message = room_service.delete_room_type(slug)
+    return jsonify({"ok": ok, "message": message}), 200 if ok else 400
+
+
 @app.put("/api/room-types/move-rooms")
 def move_rooms_to_room_type():
     if not session.get("user"):
@@ -102,8 +153,12 @@ def create_room():
     if not session.get("user"):
         return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
 
-    payload = request.get_json(silent=True) or {}
+    payload, uploaded_image, error = _room_payload_from_request()
+    if error:
+        return jsonify({"ok": False, "message": error}), 400
     ok, message, room = room_service.create_room(payload)
+    if not ok:
+        _remove_upload(uploaded_image)
     return jsonify({"ok": ok, "message": message, "room": room}), 201 if ok else 400
 
 
@@ -112,9 +167,18 @@ def update_room(room_id):
     if not session.get("user"):
         return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
 
-    payload = request.get_json(silent=True) or {}
+    payload, uploaded_image, error = _room_payload_from_request()
+    if error:
+        return jsonify({"ok": False, "message": error}), 400
     ok, message, room = room_service.update_room(room_id, payload)
+    if not ok:
+        _remove_upload(uploaded_image)
     return jsonify({"ok": ok, "message": message, "room": room}), 200 if ok else 400
+
+
+@app.errorhandler(413)
+def upload_too_large(_error):
+    return jsonify({"ok": False, "message": "Dung lượng ảnh tối đa là 5 MB."}), 413
 
 
 @app.delete("/api/rooms/<int:room_id>")

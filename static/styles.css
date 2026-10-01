@@ -79,7 +79,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .page-shell.dashboard-mode .dashboard-header { margin-bottom: 18px; }
 .dashboard-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 32px; }
 .dashboard-header h2 { font-size: 27px; }
-.logout-button { flex: 0 0 auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; color: #34453d; background: white; cursor: pointer; font-size: 11px; font-weight: 600; }
+.account-menu { position: relative; z-index: 30; flex: 0 0 auto; }
+.account-menu-trigger { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid var(--line); border-radius: 4px; background: #fff; cursor: pointer; }
+.account-menu-trigger:hover { background: #f3f6f2; }
+.account-menu-trigger:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.hamburger-icon { display: block; width: 17px; height: 14px; background: linear-gradient(var(--forest), var(--forest)) 0 0 / 100% 2px no-repeat, linear-gradient(var(--forest), var(--forest)) 0 6px / 100% 2px no-repeat, linear-gradient(var(--forest), var(--forest)) 0 12px / 100% 2px no-repeat; }
+.account-menu-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 160px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: 0 12px 28px rgba(10, 25, 19, 0.16); }
+.logout-button { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; border-radius: 4px; color: #34453d; background: white; cursor: pointer; font-size: 12px; font-weight: 600; text-align: left; }
+.logout-button:hover { background: #f3f6f2; }
 .logout-button span { padding-left: 8px; color: var(--green); }
 .dashboard-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr) 330px; gap: 22px; align-items: start; }
 .page-shell.dashboard-mode .dashboard-shell { grid-template-columns: 190px minmax(0, 1fr); gap: 18px; }
@@ -118,9 +125,25 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .room-types-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .room-type-actions { display: grid; justify-items: stretch; gap: 8px; }
 .room-type-actions button { width: 100%; }
-.room-type-picker { display: grid; width: min(100%, 520px); gap: 8px; }
-.room-type-picker label { margin: 0; color: var(--forest); font-size: 12px; font-weight: 600; }
-.room-type-picker select { min-height: 52px; margin: 0; font-size: 14px; }
+.room-type-picker { display: grid; width: min(100%, 650px); gap: 8px; }
+.room-type-picker-label { margin: 0; color: var(--forest); font-size: 12px; font-weight: 600; }
+.room-type-picker-control { position: relative; }
+.room-type-picker-trigger { display: flex; width: 100%; min-height: 52px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 15px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--forest); cursor: pointer; font: inherit; text-align: left; }
+.room-type-picker-trigger::after { width: 8px; height: 8px; flex: 0 0 auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ""; transform: translateY(-2px) rotate(45deg); }
+.room-type-picker-trigger[aria-expanded="true"]::after { transform: translateY(2px) rotate(225deg); }
+.room-type-picker-trigger:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.room-type-list { position: absolute; z-index: 20; top: calc(100% + 4px); right: 0; left: 0; display: grid; max-height: 240px; overflow-y: auto; scrollbar-color: #84998d #f3f6f2; scrollbar-gutter: stable; scrollbar-width: thin; border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: 0 12px 24px rgba(10, 25, 19, 0.14); }
+.room-type-list::-webkit-scrollbar { width: 12px; }
+.room-type-list::-webkit-scrollbar-track { border-left: 1px solid var(--line); background: #f3f6f2; }
+.room-type-list::-webkit-scrollbar-thumb { border: 3px solid #f3f6f2; border-radius: 999px; background: #84998d; }
+.room-type-list::-webkit-scrollbar-thumb:hover { background: var(--green); }
+.room-type-row { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center; border-bottom: 1px solid var(--line); }
+.room-type-row:last-child { border-bottom: 0; }
+.room-type-select { display: flex; min-width: 0; min-height: 48px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 0; background: transparent; color: var(--forest); cursor: pointer; text-align: left; }
+.room-type-select:hover { background: #f3f6f2; }
+.room-type-select[aria-pressed="true"] { background: #ead9a9; }
+.room-type-select small { flex: 0 0 auto; color: var(--muted); font-size: 12px; }
+.room-type-delete { margin: 0 8px; }
 .room-type-form { display: grid; width: min(100%, 520px); grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
 .room-type-form > div { display: grid; gap: 8px; }
 .room-type-form .form-message { margin: 0; }
@@ -218,6 +241,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
 .room-form-message { margin-top: 4px; }
+.room-image-input { padding: 7px; font-size: 12px; }
+.room-image-input::file-selector-button { min-height: 36px; margin-right: 10px; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; background: #f3f6f2; color: var(--forest); cursor: pointer; font: inherit; }
+.room-image-input::file-selector-button:hover { background: #e8eee9; }
+.room-image-name { margin: -5px 0 2px; color: var(--muted); font-size: 11px; }
 .account-row { display: flex; justify-content: space-between; gap: 16px; padding: 17px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
 .account-row:first-of-type { margin-top: 17px; }
 .account-row span { color: var(--muted); }

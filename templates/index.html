@@ -48,6 +48,7 @@
           <p>Nhập thông tin để đăng ký tài khoản nhân viên.</p>
         </div>
         <form id="registrationForm" novalidate>
+          <p class="form-message" id="registrationMessage" role="alert" aria-live="polite"></p>
           <label for="fullName">Họ và tên</label>
           <input id="fullName" name="full_name" type="text" autocomplete="name" maxlength="120" placeholder="Nguyễn Văn An" required>
           <label for="registerEmail">Email</label>
@@ -56,7 +57,6 @@
           <input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Ít nhất 8 ký tự" required>
           <label for="confirmPassword">Xác nhận mật khẩu</label>
           <input id="confirmPassword" name="confirm_password" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Nhập lại mật khẩu" required>
-          <p class="form-message" id="registrationMessage" role="alert" aria-live="polite"></p>
           <button class="primary-button" type="submit">Tạo tài khoản <span aria-hidden="true">→</span></button>
         </form>
         <p class="auth-switch">Đã có tài khoản? <button class="text-link" id="showLogin" type="button">Đăng nhập</button></p>
@@ -65,7 +65,14 @@
       <section class="dashboard-view hidden" id="dashboardView">
         <header class="dashboard-header">
           <div><p class="kicker">LOTUS STAY / TRANG CHỦ</p><h2>Xin chào, <span id="userName"></span></h2></div>
-          <button class="logout-button" id="logoutButton" type="button" title="Đăng xuất" aria-label="Đăng xuất">Đăng xuất <span aria-hidden="true">↗</span></button>
+          <div class="account-menu" id="accountMenu">
+            <button class="account-menu-trigger" id="accountMenuTrigger" type="button" title="Menu tài khoản" aria-label="Mở menu tài khoản" aria-expanded="false" aria-controls="accountMenuDropdown">
+              <span class="hamburger-icon" aria-hidden="true"></span>
+            </button>
+            <div class="account-menu-dropdown hidden" id="accountMenuDropdown">
+              <button class="logout-button" id="logoutButton" type="button" title="Đăng xuất">Đăng xuất <span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
         </header>
 
         <div class="dashboard-shell">
@@ -138,10 +145,13 @@
                   </div>
                 </div>
                 <div class="room-type-picker">
-                  <label for="roomTypeCategory">Chọn thể loại phòng</label>
-                  <select id="roomTypeCategory" aria-label="Chọn thể loại phòng">
-                    <option value="">Chọn thể loại phòng</option>
-                  </select>
+                  <p class="room-type-picker-label" id="roomTypeCategoryLabel">Chọn thể loại phòng</p>
+                  <div class="room-type-picker-control" id="roomTypePickerControl">
+                    <button class="room-type-picker-trigger" id="roomTypePickerTrigger" type="button" aria-expanded="false" aria-controls="roomTypeList" aria-haspopup="true">
+                      <span id="roomTypePickerValue">Chọn thể loại phòng</span>
+                    </button>
+                    <div class="room-type-list hidden" id="roomTypeList" role="group" aria-labelledby="roomTypeCategoryLabel"></div>
+                  </div>
                 </div>
                 <section class="type-rooms-section" aria-labelledby="typeRoomsTitle">
                   <h4 id="typeRoomsTitle">Phòng theo thể loại</h4>
@@ -168,7 +178,9 @@
               <textarea id="roomDescription" name="description" rows="3" maxlength="250" placeholder="Mô tả ngắn về phòng..."></textarea>
 
               <label for="roomImage">Hình ảnh</label>
-              <input id="roomImage" name="image_url" type="url" placeholder="https://images.unsplash.com/..." required>
+              <input class="room-image-input" id="roomImage" name="image" type="file" accept=".jpg,.jpeg,.png,.webp" required>
+              <input id="roomImageUrl" name="image_url" type="hidden">
+              <p class="room-image-name" id="roomImageName">Chưa chọn tệp nào.</p>
 
               <div class="field-row two-col">
                 <div>
