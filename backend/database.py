@@ -26,6 +26,9 @@ class Database:
 
     def initialize(self) -> None:
         with self.connect() as connection:
+            room_types_table_exists = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'room_types'"
+            ).fetchone() is not None
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS users (
@@ -47,10 +50,11 @@ class Database:
                 )
                 """
             )
-            connection.executemany(
-                "INSERT OR IGNORE INTO room_types(slug, name) VALUES (?, ?)",
-                DEFAULT_ROOM_TYPES,
-            )
+            if not room_types_table_exists:
+                connection.executemany(
+                    "INSERT INTO room_types(slug, name) VALUES (?, ?)",
+                    DEFAULT_ROOM_TYPES,
+                )
 
             rooms_schema = """
                 CREATE TABLE IF NOT EXISTS rooms (

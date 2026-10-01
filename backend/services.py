@@ -139,6 +139,36 @@ class RoomService:
             return False, "Thể loại phòng này đã tồn tại.", None
         return True, "Đã thêm thể loại phòng.", {"slug": slug, "name": name}
 
+    def delete_room_type(self, slug: str) -> tuple[bool, str]:
+        if not isinstance(slug, str) or not slug.strip():
+            return False, "Thể loại phòng không hợp lệ."
+        slug = slug.strip()
+
+        try:
+            with self.database.connect() as connection:
+                deleted = connection.execute(
+                    """
+                    DELETE FROM room_types
+                    WHERE slug = ?
+                      AND NOT EXISTS (
+                          SELECT 1 FROM rooms WHERE rooms.room_type = room_types.slug
+                      )
+                    """,
+                    (slug,),
+                )
+                if deleted.rowcount:
+                    return True, "Đã xóa thể loại phòng."
+
+                room_type = connection.execute(
+                    "SELECT 1 FROM room_types WHERE slug = ?", (slug,)
+                ).fetchone()
+                if room_type is None:
+                    return False, "Thể loại phòng không tồn tại."
+
+                return False, "Không thể xóa thể loại phòng này."
+        except sqlite3.IntegrityError:
+            return False, "Không thể xóa thể loại phòng này."
+
     def move_rooms_to_room_type(
         self, source_slug: str, target_slug: str, room_ids: list[int]
     ) -> tuple[bool, str, int]:
