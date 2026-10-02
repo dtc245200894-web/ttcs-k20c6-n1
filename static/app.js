@@ -388,6 +388,46 @@ function closeDeleteConfirmation() {
   deleteTrigger = null;
 }
 
+function countRoomsByStatus(rooms) {
+  const counts = {
+    all: rooms.length,
+    available: 0,
+    occupied: 0,
+    cleaning: 0,
+    maintenance: 0,
+  };
+
+  rooms.forEach((room) => {
+    if (counts[room.status] !== undefined) {
+      counts[room.status] += 1;
+    }
+  });
+
+  return counts;
+}
+
+function renderRoomStatusFilters() {
+  const rooms = window.__roomList || [];
+  const counts = countRoomsByStatus(rooms);
+  const statusOrder = [
+    { key: "all", label: "Tất cả" },
+    { key: "available", label: "Trống" },
+    { key: "occupied", label: "Đã thuê" },
+    { key: "cleaning", label: "Đang dọn" },
+    { key: "maintenance", label: "Bảo trì" },
+  ];
+
+  document.querySelectorAll(".chip").forEach((button) => {
+    const status = statusOrder.find((item) => item.key === button.dataset.filter) || statusOrder[0];
+    const count = counts[status.key] ?? 0;
+    button.innerHTML = `
+      <span>${status.label}</span>
+      <span class="chip-count">${count}</span>
+    `;
+    button.classList.toggle("has-count", true);
+  });
+}
+
 function applyRoomFilter(filter) {
   currentFilter = filter;
   document.querySelectorAll(".chip").forEach((button) => {
@@ -468,6 +508,7 @@ async function loadRooms() {
       return;
     }
     window.__roomList = result.rooms || [];
+    renderRoomStatusFilters();
     renderRoomTypes();
     renderRooms();
     renderOverviewRooms();
