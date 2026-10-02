@@ -434,6 +434,7 @@ function applyRoomFilter(filter) {
     button.classList.toggle("active", button.dataset.filter === filter);
   });
   renderRooms();
+  renderOverviewRooms();
 }
 
 function renderRooms() {
@@ -470,13 +471,14 @@ function renderRooms() {
 
 function renderOverviewRooms() {
   const rooms = window.__roomList || [];
+  const filteredRooms = currentFilter === "all" ? rooms : rooms.filter((room) => room.status === currentFilter);
 
-  if (!rooms.length) {
-    overviewRoomsGrid.innerHTML = '<article class="overview-room-card room-empty"><strong>Chưa có phòng</strong><span>Hãy thêm phòng trong mục Quản lý phòng.</span></article>';
+  if (!filteredRooms.length) {
+    overviewRoomsGrid.innerHTML = '<article class="overview-room-card room-empty"><strong>Chưa có phòng</strong><span>Không có phòng nào trong trạng thái này.</span></article>';
     return;
   }
 
-  overviewRoomsGrid.innerHTML = rooms.map((room) => {
+  overviewRoomsGrid.innerHTML = filteredRooms.map((room) => {
     const overviewStatusMap = {
       available: { className: "is-available", label: "Phòng trống" },
       occupied: { className: "is-occupied", label: "Đã có người thuê" },
