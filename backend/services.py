@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import unicodedata
+from datetime import datetime
 from typing import Any
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -213,9 +214,72 @@ class RoomService:
     def list_rooms(self) -> list[dict[str, Any]]:
         with self.database.connect() as connection:
             rows = connection.execute(
-                "SELECT * FROM rooms ORDER BY floor, code ASC"
+                """
+                SELECT rooms.*,
+                       rentals.starts_at AS check_in,
+                       rentals.ends_at AS check_out
+                FROM rooms
+                LEFT JOIN rentals ON rentals.room_id = rooms.id AND rentals.status = 'active'
+                ORDER BY rooms.floor, rooms.code ASC
+                """
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def rent_room(
+        self, room_id: int, starts_at: str, ends_at: str
+    ) -> tuple[bool, str, dict[str, Any] | None]:
+        if isinstance(room_id, bool) or not isinstance(room_id, int) or room_id < 1:
+            return False, "Phòng được chọn không hợp lệ.", None
+        if not isinstance(starts_at, str) or not isinstance(ends_at, str):
+            return False, "Vui lòng chọn thời gian trả phòng hợp lệ.", None
+        try:
+            start = datetime.fromisoformat(starts_at)
+            checkout = datetime.fromisoformat(ends_at)
+        except ValueError:
+            return False, "Vui lòng chọn thời gian trả phòng hợp lệ.", None
+        if start.tzinfo is not None or checkout.tzinfo is not None:
+            return False, "Thời gian thuê phòng không hợp lệ.", None
+        if abs((start - datetime.now()).total_seconds()) > 120:
+            return False, "Giờ bắt đầu thuê đã thay đổi. Vui lòng thử lại.", None
+        if checkout.time() != start.time():
+            return False, "Giờ trả phòng phải trùng với giờ thuê phòng vào.", None
+        nights = (checkout.date() - start.date()).days
+        if nights < 1:
+            return False, "Ngày trả phòng phải sau ngày thuê phòng.", None
+
+        try:
+            with self.database.connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                room = connection.execute(
+                    "SELECT * FROM rooms WHERE id = ? AND status = 'available'",
+                    (room_id,),
+                ).fetchone()
+                if room is None:
+                    return False, "Phòng không tồn tại hoặc không còn trống.", None
+
+                total_price = round(nights * room["price"], 2)
+                start_value = start.isoformat(timespec="minutes")
+                end_value = checkout.isoformat(timespec="minutes")
+                connection.execute(
+                    "INSERT INTO rentals(room_id, starts_at, ends_at, nights, total_price) VALUES (?, ?, ?, ?, ?)",
+                    (room_id, start_value, end_value, nights, total_price),
+                )
+                updated = connection.execute(
+                    "UPDATE rooms SET status = 'occupied', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'available'",
+                    (room_id,),
+                )
+                if updated.rowcount == 0:
+                    return False, "Phòng không còn trống. Vui lòng tải lại danh sách.", None
+        except sqlite3.IntegrityError:
+            return False, "Phòng đã có lượt thuê đang hoạt động.", None
+
+        return True, "Thuê phòng thành công.", {
+            "room_id": room_id,
+            "check_in": start_value,
+            "check_out": end_value,
+            "nights": nights,
+            "total_price": total_price,
+        }
 
     def create_room(self, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any] | None]:
         if isinstance(payload, dict):

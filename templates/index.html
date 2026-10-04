@@ -99,6 +99,7 @@
                   <button type="button" class="chip" data-filter="occupied">Đã thuê</button>
                   <button type="button" class="chip" data-filter="cleaning">Đang dọn</button>
                   <button type="button" class="chip" data-filter="maintenance">Bảo trì</button>
+                  <button class="primary-button rent-room-button" id="openRentalForm" type="button">Thuê phòng</button>
                 </div>
                 <div class="overview-section-header">
                   <div>
@@ -224,6 +225,40 @@
               </div>
             </form>
           </aside>
+          </div>
+          <div class="room-modal hidden" id="rentalFormModal">
+            <aside class="form-panel is-open" role="dialog" aria-modal="true" aria-labelledby="rentalFormTitle">
+              <div class="form-panel-header">
+                <p class="kicker">TIẾP NHẬN KHÁCH</p>
+                <h3 id="rentalFormTitle">Thuê phòng</h3>
+              </div>
+              <form id="rentalForm" novalidate>
+                <label for="rentalRoom">Phòng trống</label>
+                <select id="rentalRoom" name="room_id" required>
+                  <option value="">Chọn phòng</option>
+                </select>
+                <section class="rental-room-details" id="rentalRoomDetails" aria-live="polite">
+                  <p>Thông tin phòng sẽ hiển thị tại đây.</p>
+                </section>
+                <label for="rentalStart">Giờ bắt đầu thuê</label>
+                <input id="rentalStart" name="starts_at" type="datetime-local" readonly required>
+                <label for="rentalEnd">Ngày trả phòng</label>
+                <input id="rentalEnd" name="ends_on" type="date" required>
+                <div class="rental-checkout-time">
+                  <span>Giờ trả phòng (theo giờ nhận)</span>
+                  <output id="rentalCheckoutTime">--:--</output>
+                </div>
+                <div class="rental-total" aria-live="polite">
+                  <span id="rentalDuration">Thời lượng: 0 đêm</span>
+                  <strong id="rentalTotal">Tổng tiền: 0 ₫</strong>
+                </div>
+                <p class="form-message room-form-message" id="rentalFormMessage" role="alert" aria-live="polite"></p>
+                <div class="form-actions">
+                  <button class="secondary-button" id="cancelRentalForm" type="button">Hủy</button>
+                  <button class="primary-button" type="submit">Lưu thuê phòng</button>
+                </div>
+              </form>
+            </aside>
           </div>
           <div class="room-modal hidden" id="addRoomTypeModal">
             <aside class="form-panel is-open" role="dialog" aria-modal="true" aria-labelledby="addRoomTypeTitle">
