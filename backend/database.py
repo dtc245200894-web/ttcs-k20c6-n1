@@ -93,6 +93,23 @@ class Database:
                     """
                 )
                 connection.execute("DROP TABLE rooms_legacy")
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS rentals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    room_id INTEGER NOT NULL REFERENCES rooms(id),
+                    starts_at TEXT NOT NULL,
+                    ends_at TEXT NOT NULL,
+                    nights INTEGER NOT NULL,
+                    total_price REAL NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'completed'))
+                )
+                """
+            )
+            connection.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS one_active_rental_per_room "
+                "ON rentals(room_id) WHERE status = 'active'"
+            )
             existing_user = connection.execute(
                 "SELECT id FROM users WHERE email = ?", (DEMO_EMAIL,)
             ).fetchone()

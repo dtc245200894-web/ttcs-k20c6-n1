@@ -14,6 +14,16 @@ const overviewRoomsGrid = document.querySelector("#overviewRoomsGrid");
 const roomForm = document.querySelector("#roomForm");
 const roomFormPanel = document.querySelector("#roomFormPanel");
 const roomFormModal = document.querySelector("#roomFormModal");
+const rentalFormModal = document.querySelector("#rentalFormModal");
+const rentalForm = document.querySelector("#rentalForm");
+const rentalRoomSelect = document.querySelector("#rentalRoom");
+const rentalRoomDetails = document.querySelector("#rentalRoomDetails");
+const rentalStartInput = document.querySelector("#rentalStart");
+const rentalEndInput = document.querySelector("#rentalEnd");
+const rentalCheckoutTime = document.querySelector("#rentalCheckoutTime");
+const rentalDuration = document.querySelector("#rentalDuration");
+const rentalTotal = document.querySelector("#rentalTotal");
+const rentalFormMessage = document.querySelector("#rentalFormMessage");
 const roomImageInput = document.querySelector("#roomImage");
 const roomImageUrlInput = document.querySelector("#roomImageUrl");
 const roomImageName = document.querySelector("#roomImageName");
@@ -33,7 +43,7 @@ const roomTypePickerControl = document.querySelector("#roomTypePickerControl");
 const roomTypePickerTrigger = document.querySelector("#roomTypePickerTrigger");
 const roomTypePickerValue = document.querySelector("#roomTypePickerValue");
 const roomTypeList = document.querySelector("#roomTypeList");
-document.body.append(roomFormModal, addRoomTypeModal, moveRoomTypeModal, deleteConfirmModal, moveRoomTypeConfirmModal);
+document.body.append(roomFormModal, rentalFormModal, addRoomTypeModal, moveRoomTypeModal, deleteConfirmModal, moveRoomTypeConfirmModal);
 const roomFormTitle = document.querySelector("#roomFormTitle");
 const roomFormMessage = document.querySelector("#roomFormMessage");
 const roomTypeFormMessage = document.querySelector("#roomTypeFormMessage");
@@ -428,6 +438,119 @@ function renderRoomStatusFilters() {
   });
 }
 
+function localDateTimeValue(date) {
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
+}
+
+function nextDateValue(dateTimeValue) {
+  const [year, month, day] = dateTimeValue.slice(0, 10).split("-").map(Number);
+  return localDateTimeValue(new Date(year, month - 1, day + 1)).slice(0, 10);
+}
+
+function getRentalNights() {
+  if (!rentalStartInput.value || !rentalEndInput.value) return 0;
+  const [startYear, startMonth, startDay] = rentalStartInput.value.slice(0, 10).split("-").map(Number);
+  const [endYear, endMonth, endDay] = rentalEndInput.value.split("-").map(Number);
+  return (Date.UTC(endYear, endMonth - 1, endDay) - Date.UTC(startYear, startMonth - 1, startDay)) / 86400000;
+}
+
+function updateRentalSummary() {
+  const room = (window.__roomList || []).find((item) => String(item.id) === rentalRoomSelect.value);
+  const nights = getRentalNights();
+  if (!room || nights < 1) {
+    rentalDuration.textContent = "Thời lượng: 0 đêm";
+    rentalTotal.textContent = `Tổng tiền: ${formatCurrency(0)}`;
+    return;
+  }
+
+  rentalDuration.textContent = `Thời lượng: ${nights} đêm`;
+  rentalTotal.textContent = `Tổng tiền: ${formatCurrency(nights * room.price)}`;
+}
+
+function updateRentalRoomDetails() {
+  const room = (window.__roomList || []).find((item) => String(item.id) === rentalRoomSelect.value);
+  if (!room) {
+    rentalRoomDetails.innerHTML = '<p>Thông tin phòng sẽ hiển thị tại đây.</p>';
+    updateRentalSummary();
+    return;
+  }
+  rentalRoomDetails.innerHTML = `
+    <img src="${escapeHtml(room.image_url || "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=900&q=80")}" alt="${escapeHtml(room.name)}">
+    <strong>${escapeHtml(room.name)} · ${escapeHtml(room.code)}</strong>
+    <span>${escapeHtml(room.description || "Khách sạn Lotus Stay.")}</span>
+    <span>Loại: ${escapeHtml(roomTypeMap[room.room_type] || room.room_type)} · Tầng ${escapeHtml(room.floor)}</span>
+    <span>Trạng thái: Trống</span>
+    <span>Giá: ${formatCurrency(room.price)} / đêm</span>
+  `;
+  updateRentalSummary();
+}
+
+function openRentalForm() {
+  const availableRooms = (window.__roomList || []).filter((room) => room.status === "available");
+  rentalRoomSelect.replaceChildren(
+    new Option(availableRooms.length ? "Chọn phòng" : "Không có phòng trống", ""),
+    ...availableRooms.map((room) => new Option(`${room.code} · ${room.name}`, room.id)),
+  );
+  rentalForm.reset();
+  const startsAt = new Date();
+  rentalStartInput.value = localDateTimeValue(startsAt);
+  rentalEndInput.min = nextDateValue(rentalStartInput.value);
+  rentalEndInput.value = rentalEndInput.min;
+  rentalCheckoutTime.textContent = rentalStartInput.value.slice(11, 16);
+  rentalFormMessage.textContent = "";
+  rentalFormModal.classList.remove("hidden");
+  updateRentalRoomDetails();
+  rentalRoomSelect.focus();
+}
+
+function closeRentalForm() {
+  rentalFormModal.classList.add("hidden");
+  rentalFormMessage.textContent = "";
+}
+
+async function saveRental(event) {
+  event.preventDefault();
+  rentalFormMessage.textContent = "";
+  rentalStartInput.value = localDateTimeValue(new Date());
+  rentalEndInput.min = nextDateValue(rentalStartInput.value);
+  rentalCheckoutTime.textContent = rentalStartInput.value.slice(11, 16);
+  updateRentalSummary();
+  if (!rentalForm.reportValidity()) return;
+  const nights = getRentalNights();
+  if (nights < 1) {
+    rentalFormMessage.textContent = "Ngày trả phòng phải sau ngày thuê phòng.";
+    return;
+  }
+  const endsAt = `${rentalEndInput.value}T${rentalStartInput.value.slice(11, 16)}`;
+
+  const submitButton = rentalForm.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  try {
+    const response = await fetch("/api/rentals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        room_id: Number(rentalRoomSelect.value),
+        starts_at: rentalStartInput.value,
+        ends_at: endsAt,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      rentalFormMessage.textContent = result.message || "Không thể lưu thông tin thuê phòng.";
+      return;
+    }
+    closeRentalForm();
+    await loadRooms();
+    showSuccessToast(result.message);
+  } catch {
+    rentalFormMessage.textContent = "Không thể kết nối máy chủ. Vui lòng thử lại.";
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
 function applyRoomFilter(filter) {
   currentFilter = filter;
   document.querySelectorAll(".chip").forEach((button) => {
@@ -486,6 +609,22 @@ function renderOverviewRooms() {
       maintenance: { className: "is-maintenance", label: "Bảo trì" },
     };
     const status = overviewStatusMap[room.status] || overviewStatusMap.maintenance;
+    const formatOverviewDateTime = (value) => {
+      if (!value) return "<strong>Chưa có</strong>";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "<strong>Chưa có</strong>";
+      const dateLabel = new Intl.DateTimeFormat("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(date);
+      const timeLabel = new Intl.DateTimeFormat("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(date);
+      return `<strong class="overview-room-time"><span>${dateLabel}</span><span>${timeLabel}</span></strong>`;
+    };
     return `
       <article class="overview-room-card ${status.className}">
         <div class="overview-room-heading">
@@ -493,8 +632,8 @@ function renderOverviewRooms() {
           <span class="overview-room-status">${status.label}</span>
         </div>
         <div class="overview-room-details">
-          <div><span>Giờ vào</span><strong>${room.check_in || "Chưa có"}</strong></div>
-          <div><span>Giờ ra</span><strong>${room.check_out || "Chưa có"}</strong></div>
+          <div><span>Giờ vào</span>${formatOverviewDateTime(room.check_in)}</div>
+          <div><span>Giờ ra</span>${formatOverviewDateTime(room.check_out)}</div>
         </div>
       </article>
     `;
@@ -703,6 +842,11 @@ logoutButton.addEventListener("click", async () => {
 });
 
 document.querySelector("#openRoomForm").addEventListener("click", () => openRoomForm());
+document.querySelector("#openRentalForm").addEventListener("click", openRentalForm);
+document.querySelector("#cancelRentalForm").addEventListener("click", closeRentalForm);
+rentalRoomSelect.addEventListener("change", updateRentalRoomDetails);
+rentalEndInput.addEventListener("input", updateRentalSummary);
+rentalForm.addEventListener("submit", saveRental);
 document.querySelector("#cancelRoomForm").addEventListener("click", resetRoomForm);
 document.querySelectorAll(".nav-button[data-view]").forEach((button) => {
   button.addEventListener("click", () => {

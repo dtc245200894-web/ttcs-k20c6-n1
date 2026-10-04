@@ -108,6 +108,21 @@ def get_rooms():
     return jsonify({"ok": True, "rooms": room_service.list_rooms()})
 
 
+@app.post("/api/rentals")
+def create_rental():
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    room_id = payload.get("room_id")
+    if isinstance(room_id, str) and room_id.isdigit():
+        room_id = int(room_id)
+    ok, message, rental = room_service.rent_room(
+        room_id, payload.get("starts_at"), payload.get("ends_at")
+    )
+    return jsonify({"ok": ok, "message": message, "rental": rental}), 201 if ok else 400
+
+
 @app.get("/api/room-types")
 def get_room_types():
     if not session.get("user"):
