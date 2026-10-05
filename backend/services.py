@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -20,7 +20,10 @@ class AuthService:
             return None
         with self.database.connect() as connection:
             user = connection.execute(
-                "SELECT id, full_name, email, password_hash, role FROM users WHERE email = ?",
+                """
+                SELECT id, full_name, email, password_hash, role, date_of_birth, phone, avatar_url
+                FROM users WHERE email = ?
+                """,
                 (email.strip(),),
             ).fetchone()
         if user is None or not check_password_hash(user["password_hash"], password):
@@ -30,7 +33,90 @@ class AuthService:
             "full_name": user["full_name"],
             "email": user["email"],
             "role": user["role"],
+            "date_of_birth": user["date_of_birth"],
+            "phone": user["phone"],
+            "avatar_url": user["avatar_url"],
         }
+
+    def get_profile(self, user_id: int) -> dict[str, Any] | None:
+        with self.database.connect() as connection:
+            user = connection.execute(
+                """
+                SELECT id, full_name, email, role, date_of_birth, phone, avatar_url
+                FROM users WHERE id = ?
+                """,
+                (user_id,),
+            ).fetchone()
+        return dict(user) if user else None
+
+    @staticmethod
+    def validate_profile(
+        full_name: str, date_of_birth: str, phone: str
+    ) -> tuple[dict[str, str] | None, str]:
+        if not all(isinstance(value, str) for value in (full_name, date_of_birth, phone)):
+            return None, "Thông tin cá nhân không hợp lệ."
+
+        full_name = full_name.strip()
+        date_of_birth = date_of_birth.strip()
+        phone = phone.strip()
+        if not full_name or len(full_name) > 120:
+            return None, "Vui lòng nhập họ tên hợp lệ."
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_of_birth):
+            return None, "Vui lòng nhập ngày sinh hợp lệ."
+        try:
+            parsed_birth_date = date.fromisoformat(date_of_birth)
+        except ValueError:
+            return None, "Vui lòng nhập ngày sinh hợp lệ."
+        if parsed_birth_date > date.today():
+            return None, "Ngày sinh không được ở tương lai."
+        if not re.fullmatch(r"[0-9]{10}", phone):
+            return None, "Số điện thoại phải gồm đúng 10 chữ số."
+        return {
+            "full_name": full_name,
+            "date_of_birth": date_of_birth,
+            "phone": phone,
+        }, ""
+
+    def update_profile(
+        self,
+        user_id: int,
+        full_name: str,
+        date_of_birth: str,
+        phone: str,
+        avatar_url: str | None = None,
+    ) -> tuple[bool, str, dict[str, Any] | None]:
+        profile, message = self.validate_profile(full_name, date_of_birth, phone)
+        if profile is None:
+            return False, message, None
+
+        with self.database.connect() as connection:
+            if avatar_url is None:
+                connection.execute(
+                    """
+                    UPDATE users SET full_name = ?, date_of_birth = ?, phone = ?
+                    WHERE id = ?
+                    """,
+                    (profile["full_name"], profile["date_of_birth"], profile["phone"], user_id),
+                )
+            else:
+                connection.execute(
+                    """
+                    UPDATE users
+                    SET full_name = ?, date_of_birth = ?, phone = ?, avatar_url = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        profile["full_name"],
+                        profile["date_of_birth"],
+                        profile["phone"],
+                        avatar_url,
+                        user_id,
+                    ),
+                )
+        user = self.get_profile(user_id)
+        if user is None:
+            return False, "Không tìm thấy tài khoản.", None
+        return True, "Cập nhật thông tin cá nhân thành công.", user
 
     def register(self, full_name: str, email: str, password: str) -> tuple[bool, str]:
         if not all(isinstance(value, str) for value in (full_name, email, password)):

@@ -84,10 +84,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .account-menu-trigger:hover { background: #f3f6f2; }
 .account-menu-trigger:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .hamburger-icon { display: block; width: 17px; height: 14px; background: linear-gradient(var(--forest), var(--forest)) 0 0 / 100% 2px no-repeat, linear-gradient(var(--forest), var(--forest)) 0 6px / 100% 2px no-repeat, linear-gradient(var(--forest), var(--forest)) 0 12px / 100% 2px no-repeat; }
-.account-menu-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 160px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: 0 12px 28px rgba(10, 25, 19, 0.16); }
-.logout-button { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; border-radius: 4px; color: #34453d; background: white; cursor: pointer; font-size: 12px; font-weight: 600; text-align: left; }
-.logout-button:hover { background: #f3f6f2; }
-.logout-button span { padding-left: 8px; color: var(--green); }
+.account-menu-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 200px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: 0 12px 28px rgba(10, 25, 19, 0.16); }
+.profile-button, .logout-button { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; border-radius: 4px; color: #34453d; background: white; cursor: pointer; font-size: 12px; font-weight: 600; text-align: left; }
+.profile-button:hover, .logout-button:hover { background: #f3f6f2; }
+.profile-button span, .logout-button span { padding-left: 8px; color: var(--green); }
 .dashboard-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr) 330px; gap: 22px; align-items: start; }
 .page-shell.dashboard-mode .dashboard-shell { grid-template-columns: 190px minmax(0, 1fr); gap: 18px; }
 .page-shell.dashboard-mode .sidebar-panel, .page-shell.dashboard-mode .management-panel { border: none; border-radius: 0; background: transparent; box-shadow: none; }
@@ -243,6 +243,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .form-panel { width: min(560px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; padding: 26px 28px; box-shadow: 0 24px 70px rgba(10, 25, 19, 0.22); }
 .form-panel-header { margin-bottom: 4px; }
 .form-panel-header h3 { margin: 0; font-size: 20px; }
+.profile-panel { width: min(480px, 100%); }
+.profile-avatar-wrap { display: grid; width: 88px; height: 88px; place-items: center; overflow: hidden; margin: 0 auto 22px; border-radius: 50%; background: #eaf2ec; color: var(--forest); font-weight: 700; }
+.profile-avatar { width: 100%; height: 100%; object-fit: cover; }
+.profile-avatar-placeholder { font-size: 22px; letter-spacing: 1px; }
+.profile-email-note { margin: -16px 0 20px; color: var(--muted); font-size: 11px; }
 .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
 .room-form-message { margin-top: 4px; }

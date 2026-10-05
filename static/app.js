@@ -5,6 +5,14 @@ const accountMenu = document.querySelector("#accountMenu");
 const accountMenuTrigger = document.querySelector("#accountMenuTrigger");
 const accountMenuDropdown = document.querySelector("#accountMenuDropdown");
 const logoutButton = document.querySelector("#logoutButton");
+const profileModal = document.querySelector("#profileModal");
+const profileForm = document.querySelector("#profileForm");
+const profileFormMessage = document.querySelector("#profileFormMessage");
+const profileAvatarInput = document.querySelector("#profileAvatar");
+const profileAvatarPreview = document.querySelector("#profileAvatarPreview");
+const profileAvatarPlaceholder = document.querySelector("#profileAvatarPlaceholder");
+const saveProfileButton = document.querySelector("#saveProfileButton");
+let currentUser = null;
 const loginForm = document.querySelector("#loginForm");
 const registrationForm = document.querySelector("#registrationForm");
 const formMessage = document.querySelector("#formMessage");
@@ -43,7 +51,7 @@ const roomTypePickerControl = document.querySelector("#roomTypePickerControl");
 const roomTypePickerTrigger = document.querySelector("#roomTypePickerTrigger");
 const roomTypePickerValue = document.querySelector("#roomTypePickerValue");
 const roomTypeList = document.querySelector("#roomTypeList");
-document.body.append(roomFormModal, rentalFormModal, addRoomTypeModal, moveRoomTypeModal, deleteConfirmModal, moveRoomTypeConfirmModal);
+document.body.append(roomFormModal, rentalFormModal, addRoomTypeModal, moveRoomTypeModal, deleteConfirmModal, moveRoomTypeConfirmModal, profileModal);
 const roomFormTitle = document.querySelector("#roomFormTitle");
 const roomFormMessage = document.querySelector("#roomFormMessage");
 const roomTypeFormMessage = document.querySelector("#roomTypeFormMessage");
@@ -238,6 +246,7 @@ function showSuccessToast(message) {
 }
 
 function showDashboard(user) {
+  currentUser = user;
   document.querySelector("#userName").textContent = user.full_name;
   document.querySelector("#userEmail").textContent = user.email;
   document.querySelector("#userRole").textContent = { manager: "Quản lý", staff: "Nhân viên" }[user.role] || user.role;
@@ -839,6 +848,114 @@ logoutButton.addEventListener("click", async () => {
   closeAccountMenu();
   await fetch("/api/logout", { method: "POST" });
   showLogin();
+});
+
+function renderProfileAvatar(avatarUrl) {
+  if (avatarUrl) {
+    profileAvatarPreview.src = avatarUrl;
+    profileAvatarPreview.classList.remove("hidden");
+    profileAvatarPlaceholder.classList.add("hidden");
+  } else {
+    profileAvatarPreview.removeAttribute("src");
+    profileAvatarPreview.classList.add("hidden");
+    profileAvatarPlaceholder.classList.remove("hidden");
+  }
+}
+
+function fillProfileForm(user) {
+  currentUser = user;
+  document.querySelector("#profileFullName").value = user.full_name || "";
+  document.querySelector("#profileBirthDate").value = user.date_of_birth || "";
+  document.querySelector("#profileEmail").value = user.email || "";
+  document.querySelector("#profilePhone").value = user.phone || "";
+  profileAvatarInput.value = "";
+  profileFormMessage.textContent = "";
+  renderProfileAvatar(user.avatar_url);
+}
+
+async function openProfileForm() {
+  closeAccountMenu();
+  if (currentUser) fillProfileForm(currentUser);
+  profileModal.classList.remove("hidden");
+  document.querySelector("#profileFullName").focus();
+  try {
+    const response = await fetch("/api/profile");
+    const result = await response.json();
+    if (!response.ok) {
+      profileFormMessage.textContent = result.message || "Không thể tải thông tin cá nhân.";
+      return;
+    }
+    fillProfileForm(result.user);
+  } catch {
+    profileFormMessage.textContent = "Không thể kết nối máy chủ. Vui lòng thử lại.";
+  }
+}
+
+function closeProfileForm() {
+  profileModal.classList.add("hidden");
+  if (currentUser) fillProfileForm(currentUser);
+  document.querySelector("#openProfileButton").focus();
+}
+
+document.querySelector("#openProfileButton").addEventListener("click", openProfileForm);
+document.querySelector("#cancelProfileForm").addEventListener("click", closeProfileForm);
+profileAvatarInput.addEventListener("change", () => {
+  const file = profileAvatarInput.files[0];
+  if (!file) {
+    renderProfileAvatar(currentUser?.avatar_url);
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    profileAvatarInput.value = "";
+    profileFormMessage.textContent = "Chọn ảnh JPG, PNG hoặc WebP có dung lượng tối đa 5 MB.";
+    return;
+  }
+  profileAvatarPreview.src = URL.createObjectURL(file);
+  profileAvatarPreview.classList.remove("hidden");
+  profileAvatarPlaceholder.classList.add("hidden");
+  profileFormMessage.textContent = "";
+});
+profileForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  profileFormMessage.textContent = "";
+  const phone = document.querySelector("#profilePhone").value.trim();
+  if (!/^\d+$/.test(phone)) {
+    profileFormMessage.textContent = "Số điện thoại chỉ được nhập chữ số.";
+    document.querySelector("#profilePhone").focus();
+    return;
+  }
+  if (phone.length > 10) {
+    profileFormMessage.textContent = "Số điện thoại không được vượt quá 10 chữ số.";
+    document.querySelector("#profilePhone").focus();
+    return;
+  }
+  if (phone.length < 10) {
+    profileFormMessage.textContent = "Số điện thoại phải có đủ 10 chữ số.";
+    document.querySelector("#profilePhone").focus();
+    return;
+  }
+  if (!profileForm.reportValidity()) return;
+  saveProfileButton.disabled = true;
+  try {
+    const response = await fetch("/api/profile", {
+      method: "PUT",
+      body: new FormData(profileForm),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      profileFormMessage.textContent = result.message || "Không thể cập nhật thông tin cá nhân.";
+      return;
+    }
+    currentUser = result.user;
+    document.querySelector("#userName").textContent = currentUser.full_name;
+    fillProfileForm(currentUser);
+    profileModal.classList.add("hidden");
+    showSuccessToast(result.message);
+  } catch {
+    profileFormMessage.textContent = "Không thể kết nối máy chủ. Vui lòng thử lại.";
+  } finally {
+    saveProfileButton.disabled = false;
+  }
 });
 
 document.querySelector("#openRoomForm").addEventListener("click", () => openRoomForm());

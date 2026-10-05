@@ -37,10 +37,19 @@ class Database:
                     email TEXT NOT NULL UNIQUE COLLATE NOCASE,
                     password_hash TEXT NOT NULL,
                     role TEXT NOT NULL DEFAULT 'manager',
+                    date_of_birth TEXT,
+                    phone TEXT,
+                    avatar_url TEXT,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
+            user_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(users)")
+            }
+            for column in ("date_of_birth", "phone", "avatar_url"):
+                if column not in user_columns:
+                    connection.execute(f"ALTER TABLE users ADD COLUMN {column} TEXT")
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS room_types (
