@@ -70,6 +70,7 @@
               <span class="hamburger-icon" aria-hidden="true"></span>
             </button>
             <div class="account-menu-dropdown hidden" id="accountMenuDropdown">
+              <button class="profile-button" id="openProfileButton" type="button">Thông tin cá nhân <span aria-hidden="true">›</span></button>
               <button class="logout-button" id="logoutButton" type="button" title="Đăng xuất">Đăng xuất <span aria-hidden="true">↗</span></button>
             </div>
           </div>
@@ -336,6 +337,37 @@
           </div>
         </div>
       </section>
+      <div class="room-modal hidden" id="profileModal">
+        <aside class="form-panel is-open profile-panel" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+          <div class="form-panel-header">
+            <p class="kicker">TÀI KHOẢN</p>
+            <h3 id="profileTitle">Thông tin cá nhân</h3>
+          </div>
+          <form id="profileForm" novalidate>
+            <div class="profile-avatar-wrap">
+              <img class="profile-avatar hidden" id="profileAvatarPreview" alt="Ảnh đại diện">
+              <span class="profile-avatar-placeholder" id="profileAvatarPlaceholder" aria-hidden="true">LS</span>
+            </div>
+            <label for="profileFullName">Họ và tên</label>
+            <input id="profileFullName" name="full_name" type="text" autocomplete="name" maxlength="120" required>
+            <label for="profileBirthDate">Ngày sinh</label>
+            <input id="profileBirthDate" name="date_of_birth" type="date" max="{{ today }}" required>
+            <label for="profileEmail">Email</label>
+            <input id="profileEmail" name="email" type="email" autocomplete="email" readonly aria-describedby="profileEmailNote">
+            <small class="profile-email-note" id="profileEmailNote">Email không thể chỉnh sửa.</small>
+            <label for="profilePhone">Số điện thoại</label>
+            <input id="profilePhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="[0-9]{10}" required>
+            <label for="profileAvatar">Ảnh đại diện</label>
+            <input class="room-image-input" id="profileAvatar" name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp">
+            <p class="room-image-name">Tối đa 5 MB; định dạng JPG, PNG hoặc WebP.</p>
+            <p class="form-message room-form-message" id="profileFormMessage" role="alert" aria-live="polite"></p>
+            <div class="form-actions">
+              <button class="secondary-button" id="cancelProfileForm" type="button">Hủy</button>
+              <button class="primary-button" id="saveProfileButton" type="submit">Lưu thay đổi</button>
+            </div>
+          </form>
+        </aside>
+      </div>
       <footer class="workspace-footer">LOTUS STAY <span>·</span> HỆ THỐNG QUẢN LÝ KHÁCH SẠN</footer>
     </section>
   </main>

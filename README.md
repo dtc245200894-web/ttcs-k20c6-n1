@@ -8,6 +8,7 @@
 - Báo lỗi khi email hoặc mật khẩu không đúng.
 - Duy trì trạng thái đăng nhập bằng session; tải lại trang không làm mất phiên.
 - Đăng xuất và xóa session.
+- Xem và cập nhật họ tên, ngày sinh, số điện thoại, ảnh đại diện; email không thể chỉnh sửa.
 
 ## Chạy ứng dụng
 

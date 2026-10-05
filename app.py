@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
@@ -62,7 +63,7 @@ def _remove_upload(path):
 
 @app.get("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", today=date.today().isoformat())
 
 
 @app.post("/api/login")
@@ -99,6 +100,85 @@ def logout():
 @app.get("/api/session")
 def current_session():
     return jsonify({"user": session.get("user")})
+
+
+@app.get("/api/profile")
+def get_profile():
+    user = session.get("user")
+    if not user:
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+    profile = auth_service.get_profile(user["id"])
+    if profile is None:
+        session.clear()
+        return jsonify({"ok": False, "message": "Không tìm thấy tài khoản."}), 404
+    return jsonify({"ok": True, "user": profile})
+
+
+@app.put("/api/profile")
+def update_profile():
+    user = session.get("user")
+    if not user:
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+    if request.mimetype != "multipart/form-data":
+        return jsonify({"ok": False, "message": "Dữ liệu cập nhật không hợp lệ."}), 400
+
+    avatar = request.files.get("avatar")
+    avatar_url = None
+    saved_path = None
+    if avatar is not None and avatar.filename:
+        extension = Path(secure_filename(avatar.filename)).suffix.lower()
+        header = avatar.stream.read(12)
+        avatar.stream.seek(0)
+        valid_image = (
+            extension in {".jpg", ".jpeg"} and header.startswith(b"\xff\xd8\xff")
+        ) or (
+            extension == ".png" and header.startswith(b"\x89PNG\r\n\x1a\n")
+        ) or (
+            extension == ".webp" and header[:4] == b"RIFF" and header[8:12] == b"WEBP"
+        )
+        if not valid_image:
+            return jsonify({
+                "ok": False,
+                "message": "Ảnh đại diện không hợp lệ. Chọn ảnh JPG, PNG hoặc WebP.",
+            }), 400
+
+    payload = request.form
+    profile, message = auth_service.validate_profile(
+        payload.get("full_name", ""),
+        payload.get("date_of_birth", ""),
+        payload.get("phone", ""),
+    )
+    if profile is None:
+        return jsonify({"ok": False, "message": message}), 400
+
+    if avatar is not None and avatar.filename:
+        extension = Path(secure_filename(avatar.filename)).suffix.lower()
+        filename = f"{uuid4().hex}{extension}"
+        upload_folder = Path(app.config["UPLOAD_FOLDER"])
+        upload_folder.mkdir(parents=True, exist_ok=True)
+        saved_path = upload_folder / filename
+        avatar.save(saved_path)
+        avatar_url = url_for("static", filename=f"uploads/{filename}")
+    else:
+        avatar_url = None
+
+    valid, message, updated_user = auth_service.update_profile(
+        user["id"],
+        profile["full_name"],
+        profile["date_of_birth"],
+        profile["phone"],
+        avatar_url=avatar_url,
+    )
+    if not valid:
+        _remove_upload(saved_path)
+        return jsonify({"ok": False, "message": message}), 400
+
+    if updated_user is None:
+        if saved_path is not None:
+            _remove_upload(saved_path)
+        return jsonify({"ok": False, "message": "Không thể tải thông tin tài khoản."}), 500
+    session["user"] = updated_user
+    return jsonify({"ok": True, "message": "Cập nhật thông tin cá nhân thành công.", "user": updated_user})
 
 
 @app.get("/api/rooms")
