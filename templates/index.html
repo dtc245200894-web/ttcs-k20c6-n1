@@ -64,7 +64,16 @@
 
       <section class="dashboard-view hidden" id="dashboardView">
         <header class="dashboard-header">
-          <div><p class="kicker">LOTUS STAY / TRANG CHỦ</p><h2>Xin chào, <span id="userName"></span></h2></div>
+          <div class="dashboard-identity">
+            <div class="dashboard-avatar" aria-hidden="true">
+              <img class="hidden" id="dashboardAvatar" alt="">
+              <span id="dashboardAvatarPlaceholder">LS</span>
+            </div>
+            <div>
+              <p class="kicker">LOTUS STAY / TRANG CHỦ</p>
+              <h2>Xin chào, <span id="userName"></span></h2>
+            </div>
+          </div>
           <div class="account-menu" id="accountMenu">
             <button class="account-menu-trigger" id="accountMenuTrigger" type="button" title="Menu tài khoản" aria-label="Mở menu tài khoản" aria-expanded="false" aria-controls="accountMenuDropdown">
               <span class="hamburger-icon" aria-hidden="true"></span>
@@ -211,7 +220,6 @@
                   <label for="roomStatus">Trạng thái</label>
                   <select id="roomStatus" name="status">
                     <option value="available">Trống</option>
-                    <option value="occupied">Đã thuê</option>
                     <option value="cleaning">Đang dọn</option>
                     <option value="maintenance">Bảo trì</option>
                   </select>
@@ -358,7 +366,7 @@
             <label for="profilePhone">Số điện thoại</label>
             <input id="profilePhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="[0-9]{10}" required>
             <label for="profileAvatar">Ảnh đại diện</label>
-            <input class="room-image-input" id="profileAvatar" name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp">
+            <input class="room-image-input" id="profileAvatar" name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp" required>
             <p class="room-image-name">Tối đa 5 MB; định dạng JPG, PNG hoặc WebP.</p>
             <p class="form-message room-form-message" id="profileFormMessage" role="alert" aria-live="polite"></p>
             <div class="form-actions">

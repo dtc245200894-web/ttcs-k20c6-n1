@@ -245,9 +245,36 @@ function showSuccessToast(message) {
   successToastTimer = setTimeout(() => successToast.classList.add("hidden"), 3500);
 }
 
+function renderDashboardAvatar(user) {
+  const avatar = document.querySelector("#dashboardAvatar");
+  const placeholder = document.querySelector("#dashboardAvatarPlaceholder");
+  const initials = (user.full_name || "")
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+  placeholder.textContent = initials || "LS";
+  avatar.onerror = () => {
+    avatar.classList.add("hidden");
+    placeholder.classList.remove("hidden");
+  };
+  if (user.avatar_url) {
+    avatar.src = user.avatar_url;
+    avatar.classList.remove("hidden");
+    placeholder.classList.add("hidden");
+  } else {
+    avatar.removeAttribute("src");
+    avatar.classList.add("hidden");
+    placeholder.classList.remove("hidden");
+  }
+}
+
 function showDashboard(user) {
   currentUser = user;
   document.querySelector("#userName").textContent = user.full_name;
+  renderDashboardAvatar(user);
   document.querySelector("#userEmail").textContent = user.email;
   document.querySelector("#userRole").textContent = { manager: "Quản lý", staff: "Nhân viên" }[user.role] || user.role;
   authView.classList.add("hidden");
@@ -280,6 +307,8 @@ function showRegistration() {
 
 function resetRoomForm() {
   roomForm.reset();
+  const occupiedStatusOption = document.querySelector("#roomStatus option[value='occupied']");
+  if (occupiedStatusOption) occupiedStatusOption.remove();
   roomForm.dataset.mode = "create";
   roomForm.dataset.roomId = "";
   roomFormTitle.textContent = "Thêm phòng";
@@ -298,6 +327,9 @@ function resetRoomForm() {
 function openRoomForm(room = null) {
   roomFormModal.classList.remove("hidden");
   roomFormPanel.classList.add("is-open");
+  const roomStatus = document.querySelector("#roomStatus");
+  const occupiedStatusOption = roomStatus.querySelector("option[value='occupied']");
+  if (occupiedStatusOption) occupiedStatusOption.remove();
   if (!room) {
     roomForm.reset();
     roomForm.dataset.mode = "create";
@@ -327,8 +359,19 @@ function openRoomForm(room = null) {
   document.querySelector("#roomType").value = room.room_type || "double";
   document.querySelector("#roomFloor").value = room.floor || 1;
   document.querySelector("#roomPrice").value = room.price || 0;
-  document.querySelector("#roomStatus").value = room.status || "available";
-  document.querySelector("#roomStatus").disabled = false;
+  const hasActiveRental = Boolean(room.check_in);
+  if (room.status === "occupied" && hasActiveRental) {
+    const option = document.createElement("option");
+    option.value = "occupied";
+    option.textContent = "Đã thuê";
+    option.disabled = true;
+    roomStatus.append(option);
+    roomStatus.value = "occupied";
+    roomStatus.disabled = true;
+  } else {
+    roomStatus.value = room.status === "occupied" ? "available" : room.status || "available";
+    roomStatus.disabled = false;
+  }
   roomFormMessage.textContent = "";
   roomFormMessage.classList.remove("success");
 }
@@ -918,6 +961,11 @@ profileAvatarInput.addEventListener("change", () => {
 profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   profileFormMessage.textContent = "";
+  if (!profileAvatarInput.files.length) {
+    profileFormMessage.textContent = "Vui lòng chọn ảnh đại diện.";
+    profileAvatarInput.focus();
+    return;
+  }
   const phone = document.querySelector("#profilePhone").value.trim();
   if (!/^\d+$/.test(phone)) {
     profileFormMessage.textContent = "Số điện thoại chỉ được nhập chữ số.";
@@ -948,6 +996,7 @@ profileForm.addEventListener("submit", async (event) => {
     }
     currentUser = result.user;
     document.querySelector("#userName").textContent = currentUser.full_name;
+    renderDashboardAvatar(currentUser);
     fillProfileForm(currentUser);
     profileModal.classList.add("hidden");
     showSuccessToast(result.message);

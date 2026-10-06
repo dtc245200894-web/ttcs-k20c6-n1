@@ -85,34 +85,28 @@ class AuthService:
         phone: str,
         avatar_url: str | None = None,
     ) -> tuple[bool, str, dict[str, Any] | None]:
+        if not isinstance(avatar_url, str) or not avatar_url.strip():
+            return False, "Vui lòng chọn ảnh đại diện.", None
+
         profile, message = self.validate_profile(full_name, date_of_birth, phone)
         if profile is None:
             return False, message, None
 
         with self.database.connect() as connection:
-            if avatar_url is None:
-                connection.execute(
-                    """
-                    UPDATE users SET full_name = ?, date_of_birth = ?, phone = ?
-                    WHERE id = ?
-                    """,
-                    (profile["full_name"], profile["date_of_birth"], profile["phone"], user_id),
-                )
-            else:
-                connection.execute(
-                    """
-                    UPDATE users
-                    SET full_name = ?, date_of_birth = ?, phone = ?, avatar_url = ?
-                    WHERE id = ?
-                    """,
-                    (
-                        profile["full_name"],
-                        profile["date_of_birth"],
-                        profile["phone"],
-                        avatar_url,
-                        user_id,
-                    ),
-                )
+            connection.execute(
+                """
+                UPDATE users
+                SET full_name = ?, date_of_birth = ?, phone = ?, avatar_url = ?
+                WHERE id = ?
+                """,
+                (
+                    profile["full_name"],
+                    profile["date_of_birth"],
+                    profile["phone"],
+                    avatar_url.strip(),
+                    user_id,
+                ),
+            )
         user = self.get_profile(user_id)
         if user is None:
             return False, "Không tìm thấy tài khoản.", None
@@ -404,13 +398,35 @@ class RoomService:
         return True, "Phòng mới đã được thêm.", dict(room)
 
     def update_room(self, room_id: int, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any] | None]:
-        try:
-            normalized = self._normalize_room_data(payload)
-        except ValueError as exc:
-            return False, str(exc), None
+        if not isinstance(payload, dict):
+            return False, "Dữ liệu phòng không hợp lệ.", None
 
         try:
             with self.database.connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                current_room = connection.execute(
+                    "SELECT status FROM rooms WHERE id = ?", (room_id,)
+                ).fetchone()
+                if current_room is None:
+                    return False, "Phòng không tồn tại.", None
+
+                active_rental = connection.execute(
+                    "SELECT 1 FROM rentals WHERE room_id = ? AND status = 'active'",
+                    (room_id,),
+                ).fetchone()
+                requested_status = str(
+                    payload.get("status", current_room["status"])
+                ).strip().lower()
+                if requested_status == "occupied" and current_room["status"] != "occupied":
+                    return False, "Chỉ có thể chuyển phòng sang trạng thái đã thuê khi tạo lượt thuê.", None
+                if requested_status == "occupied" and active_rental is None:
+                    return False, "Chỉ phòng đang có người thuê mới được mang trạng thái đã thuê.", None
+                if active_rental is not None and requested_status != "occupied":
+                    return False, "Không thể đổi trạng thái phòng khi đang có người thuê.", None
+
+                normalized = self._normalize_room_data(
+                    {**payload, "status": requested_status}
+                )
                 updated = connection.execute(
                     """
                     UPDATE rooms
@@ -432,6 +448,8 @@ class RoomService:
                 if updated.rowcount == 0:
                     return False, "Phòng không tồn tại.", None
                 room = connection.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
+        except ValueError as exc:
+            return False, str(exc), None
         except sqlite3.IntegrityError:
             return False, "Mã phòng đã tồn tại. Vui lòng chọn mã khác.", None
 
