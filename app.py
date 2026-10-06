@@ -123,24 +123,26 @@ def update_profile():
         return jsonify({"ok": False, "message": "Dữ liệu cập nhật không hợp lệ."}), 400
 
     avatar = request.files.get("avatar")
+    if avatar is None or not avatar.filename:
+        return jsonify({"ok": False, "message": "Vui lòng chọn ảnh đại diện."}), 400
+
     avatar_url = None
     saved_path = None
-    if avatar is not None and avatar.filename:
-        extension = Path(secure_filename(avatar.filename)).suffix.lower()
-        header = avatar.stream.read(12)
-        avatar.stream.seek(0)
-        valid_image = (
-            extension in {".jpg", ".jpeg"} and header.startswith(b"\xff\xd8\xff")
-        ) or (
-            extension == ".png" and header.startswith(b"\x89PNG\r\n\x1a\n")
-        ) or (
-            extension == ".webp" and header[:4] == b"RIFF" and header[8:12] == b"WEBP"
-        )
-        if not valid_image:
-            return jsonify({
-                "ok": False,
-                "message": "Ảnh đại diện không hợp lệ. Chọn ảnh JPG, PNG hoặc WebP.",
-            }), 400
+    extension = Path(secure_filename(avatar.filename)).suffix.lower()
+    header = avatar.stream.read(12)
+    avatar.stream.seek(0)
+    valid_image = (
+        extension in {".jpg", ".jpeg"} and header.startswith(b"\xff\xd8\xff")
+    ) or (
+        extension == ".png" and header.startswith(b"\x89PNG\r\n\x1a\n")
+    ) or (
+        extension == ".webp" and header[:4] == b"RIFF" and header[8:12] == b"WEBP"
+    )
+    if not valid_image:
+        return jsonify({
+            "ok": False,
+            "message": "Ảnh đại diện không hợp lệ. Chọn ảnh JPG, PNG hoặc WebP.",
+        }), 400
 
     payload = request.form
     profile, message = auth_service.validate_profile(
@@ -151,16 +153,12 @@ def update_profile():
     if profile is None:
         return jsonify({"ok": False, "message": message}), 400
 
-    if avatar is not None and avatar.filename:
-        extension = Path(secure_filename(avatar.filename)).suffix.lower()
-        filename = f"{uuid4().hex}{extension}"
-        upload_folder = Path(app.config["UPLOAD_FOLDER"])
-        upload_folder.mkdir(parents=True, exist_ok=True)
-        saved_path = upload_folder / filename
-        avatar.save(saved_path)
-        avatar_url = url_for("static", filename=f"uploads/{filename}")
-    else:
-        avatar_url = None
+    filename = f"{uuid4().hex}{extension}"
+    upload_folder = Path(app.config["UPLOAD_FOLDER"])
+    upload_folder.mkdir(parents=True, exist_ok=True)
+    saved_path = upload_folder / filename
+    avatar.save(saved_path)
+    avatar_url = url_for("static", filename=f"uploads/{filename}")
 
     valid, message, updated_user = auth_service.update_profile(
         user["id"],
