@@ -10,6 +10,14 @@ const dashboardAvatarActions = document.querySelector("#dashboardAvatarActions")
 const logoutButton = document.querySelector("#logoutButton");
 const profileModal = document.querySelector("#profileModal");
 const avatarViewModal = document.querySelector("#avatarViewModal");
+const rentalDetailsModal = document.querySelector("#rentalDetailsModal");
+const rentalDetailsList = document.querySelector("#rentalDetailsList");
+const rentalTransferPanel = document.querySelector("#rentalTransferPanel");
+const transferRoomSearch = document.querySelector("#transferRoomSearch");
+const transferRoomResults = document.querySelector("#transferRoomResults");
+const transferRoomSelected = document.querySelector("#transferRoomSelected");
+const rentalTransferDropzone = document.querySelector("#rentalTransferDropzone");
+const rentalTransferMessage = document.querySelector("#rentalTransferMessage");
 const avatarViewImage = document.querySelector("#avatarViewImage");
 const avatarViewPlaceholder = document.querySelector("#avatarViewPlaceholder");
 const profileForm = document.querySelector("#profileForm");
@@ -19,6 +27,8 @@ const profileAvatarPreview = document.querySelector("#profileAvatarPreview");
 const profileAvatarPlaceholder = document.querySelector("#profileAvatarPlaceholder");
 const saveProfileButton = document.querySelector("#saveProfileButton");
 let currentUser = null;
+let rentalDetailsRoomId = null;
+let transferTargetRoomId = null;
 const loginForm = document.querySelector("#loginForm");
 const registrationForm = document.querySelector("#registrationForm");
 const formMessage = document.querySelector("#formMessage");
@@ -62,7 +72,7 @@ const roomTypePickerControl = document.querySelector("#roomTypePickerControl");
 const roomTypePickerTrigger = document.querySelector("#roomTypePickerTrigger");
 const roomTypePickerValue = document.querySelector("#roomTypePickerValue");
 const roomTypeList = document.querySelector("#roomTypeList");
-document.body.append(roomFormModal, rentalFormModal, addRoomTypeModal, moveRoomTypeModal, deleteConfirmModal, moveRoomTypeConfirmModal, profileModal, avatarViewModal);
+document.body.append(roomFormModal, rentalFormModal, addRoomTypeModal, moveRoomTypeModal, deleteConfirmModal, moveRoomTypeConfirmModal, profileModal, avatarViewModal, rentalDetailsModal);
 const roomFormTitle = document.querySelector("#roomFormTitle");
 const roomFormMessage = document.querySelector("#roomFormMessage");
 const roomTypeFormMessage = document.querySelector("#roomTypeFormMessage");
@@ -562,12 +572,15 @@ function updateRentalRoomDetails() {
     updateRentalSummary();
     return;
   }
+  const roomStatus = room.status === "occupied"
+    ? "Đang có lịch thuê; có thể đặt khung giờ khác."
+    : "Trạng thái: Trống";
   rentalRoomDetails.innerHTML = `
     <img src="${escapeHtml(room.image_url || "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=900&q=80")}" alt="${escapeHtml(room.name)}">
     <strong>${escapeHtml(room.name)} · ${escapeHtml(room.code)}</strong>
     <span>${escapeHtml(room.description || "Khách sạn Lotus Stay.")}</span>
     <span>Loại: ${escapeHtml(roomTypeMap[room.room_type] || room.room_type)} · Tầng ${escapeHtml(room.floor)}</span>
-    <span>Trạng thái: Trống</span>
+    <span>${roomStatus}</span>
     <span>Giá: ${formatCurrency(room.price)} / đêm</span>
   `;
   updateRentalSummary();
@@ -576,7 +589,8 @@ function updateRentalRoomDetails() {
 function renderRentalRoomResults() {
   const searchTerm = rentalRoomInput.value.trim().toLocaleLowerCase();
   const matchingRooms = (window.__roomList || []).filter((room) =>
-    room.status === "available" && room.code.toLocaleLowerCase().includes(searchTerm),
+    ["available", "occupied"].includes(room.status)
+      && room.code.toLocaleLowerCase().includes(searchTerm),
   );
   rentalRoomResults.replaceChildren();
 
@@ -589,7 +603,7 @@ function renderRentalRoomResults() {
   if (!matchingRooms.length) {
     const emptyMessage = document.createElement("p");
     emptyMessage.className = "rental-room-no-results";
-    emptyMessage.textContent = "Không tìm thấy mã phòng trống.";
+    emptyMessage.textContent = "Không tìm thấy phòng phù hợp.";
     rentalRoomResults.append(emptyMessage);
   } else {
     matchingRooms.forEach((room) => {
@@ -609,7 +623,7 @@ function renderRentalRoomResults() {
 
 function selectRentalRoom(roomId) {
   const room = (window.__roomList || []).find((item) =>
-    String(item.id) === roomId && item.status === "available",
+    String(item.id) === roomId && ["available", "occupied"].includes(item.status),
   );
   if (!room) return;
 
@@ -628,10 +642,10 @@ function openRentalForm() {
   rentalRoomResults.classList.add("hidden");
   rentalRoomInput.setAttribute("aria-expanded", "false");
   rentalRoomInput.setCustomValidity("");
-  if (!(window.__roomList || []).some((room) => room.status === "available")) {
-    rentalRoomInput.placeholder = "Không có phòng trống";
+  if (!(window.__roomList || []).some((room) => ["available", "occupied"].includes(room.status))) {
+    rentalRoomInput.placeholder = "Không có phòng có thể đặt";
   } else {
-    rentalRoomInput.placeholder = "Nhập mã phòng để tìm";
+    rentalRoomInput.placeholder = "Nhập mã phòng để tìm lịch trống";
   }
   const startsAt = new Date();
   const startsAtValue = localDateTimeValue(startsAt);
@@ -679,6 +693,7 @@ async function saveRental(event) {
       body: JSON.stringify({
         customer_name: rentalCustomerName.value.trim(),
         customer_phone: rentalCustomerPhone.value.trim(),
+        customer_identity: document.querySelector("#rentalCustomerIdentity").value.trim(),
         room_id: Number(rentalRoomIdInput.value),
         starts_at: startsAt,
         ends_at: endsAt,
@@ -757,6 +772,12 @@ function renderOverviewRooms() {
       maintenance: { className: "is-maintenance", label: "Bảo trì" },
     };
     const status = overviewStatusMap[room.status] || overviewStatusMap.maintenance;
+    const now = Date.now();
+    const upcomingRental = (room.rentals || []).find((rental) => {
+      const startsAt = new Date(rental.starts_at).getTime();
+      return rental.status === "active" && startsAt > now && startsAt - now <= 60 * 60 * 1000;
+    });
+    const isUpcomingSoon = room.status === "available" && Boolean(upcomingRental);
     const formatOverviewDateTime = (value) => {
       if (!value) return "<strong>Chưa có</strong>";
       const date = new Date(value);
@@ -774,10 +795,10 @@ function renderOverviewRooms() {
       return `<strong class="overview-room-time"><span>${dateLabel}</span><span>${timeLabel}</span></strong>`;
     };
     return `
-      <article class="overview-room-card ${status.className}">
+      <article class="overview-room-card ${status.className}${isUpcomingSoon ? " is-upcoming-soon" : ""}"${room.rentals?.length ? ` data-room-id="${room.id}" role="button" tabindex="0" aria-label="Xem lịch thuê phòng ${escapeHtml(room.code)}"` : ""}>
         <div class="overview-room-heading">
           <strong>${room.code}</strong>
-          <span class="overview-room-status">${status.label}</span>
+          <span class="overview-room-status">${isUpcomingSoon ? "Sắp có khách" : status.label}</span>
         </div>
         <div class="overview-room-details">
           <div><span>Giờ vào</span>${formatOverviewDateTime(room.check_in)}</div>
@@ -786,6 +807,199 @@ function renderOverviewRooms() {
       </article>
     `;
   }).join("");
+}
+
+function formatRentalDetailsDateTime(value) {
+  if (!value) return "Chưa có";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Chưa có";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+}
+
+function renderTransferRoomResults() {
+  const searchTerm = transferRoomSearch.value.trim().toLowerCase();
+  const showResults = searchTerm.length > 0 && transferTargetRoomId === null;
+  const currentRoom = (window.__roomList || []).find(
+    (room) => String(room.id) === String(rentalDetailsRoomId),
+  );
+  const availableTargets = (window.__roomList || []).filter((room) => (
+    String(room.id) !== String(rentalDetailsRoomId)
+    && ["available", "occupied"].includes(room.status)
+    && room.code.toLowerCase().includes(searchTerm)
+  ));
+
+  transferRoomResults.replaceChildren();
+  availableTargets.slice(0, 5).forEach((room) => {
+    const option = document.createElement("button");
+    option.className = "transfer-room-option";
+    option.type = "button";
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", String(room.id === transferTargetRoomId));
+    option.textContent = room.code;
+    option.addEventListener("click", () => {
+      transferTargetRoomId = room.id;
+      transferRoomSearch.value = room.code;
+      transferRoomSelected.textContent = `Phòng đích: ${room.code}`;
+      rentalTransferDropzone.textContent = `Kéo lịch sắp tới vào đây để chuyển sang phòng ${room.code}.`;
+      rentalTransferDropzone.classList.add("is-ready");
+      rentalTransferMessage.textContent = "";
+      rentalTransferMessage.classList.remove("is-error", "is-success");
+      renderTransferRoomResults();
+    });
+    transferRoomResults.append(option);
+  });
+
+  if (!availableTargets.length) {
+    const emptyMessage = document.createElement("p");
+    emptyMessage.className = "transfer-room-empty";
+    emptyMessage.textContent = currentRoom
+      ? "Không tìm thấy phòng đích phù hợp."
+      : "Không tìm thấy phòng.";
+    transferRoomResults.append(emptyMessage);
+  } else if (availableTargets.length > 5) {
+    const refineMessage = document.createElement("p");
+    refineMessage.className = "transfer-room-empty";
+    refineMessage.textContent = "Nhập thêm ký tự để thu hẹp kết quả.";
+    transferRoomResults.append(refineMessage);
+  }
+
+  transferRoomResults.classList.toggle("hidden", !showResults);
+  transferRoomSearch.setAttribute("aria-expanded", String(showResults));
+}
+
+function openRentalDetails(room) {
+  if (rentalDetailsRoomId !== room.id) {
+    transferTargetRoomId = null;
+    transferRoomSearch.value = "";
+    transferRoomSelected.textContent = "Chọn phòng đích để bắt đầu.";
+    rentalTransferDropzone.textContent = "Chọn phòng đích, sau đó kéo lịch sắp tới vào đây.";
+    rentalTransferDropzone.classList.remove("is-ready", "is-dragging");
+    rentalTransferMessage.textContent = "";
+    rentalTransferMessage.classList.remove("is-error", "is-success");
+  }
+  rentalDetailsRoomId = room.id;
+  document.querySelector("#rentalDetailsTitle").textContent = `Lịch thuê phòng ${room.code}`;
+  const rentalsList = rentalDetailsList;
+  const now = new Date();
+  rentalsList.replaceChildren();
+  (room.rentals || []).forEach((rental) => {
+    const startsAt = new Date(rental.starts_at);
+    const endsAt = new Date(rental.ends_at);
+    const status = startsAt <= now && now < endsAt
+      ? "Đang thuê"
+      : startsAt > now
+        ? "Sắp tới"
+        : "Đã kết thúc";
+    const upcomingAndActive = rental.status === "active" && startsAt > now;
+    const item = document.createElement("details");
+    item.className = "rental-details-item";
+    if (upcomingAndActive) item.classList.add("is-draggable");
+    const rentalToggle = document.createElement("summary");
+    rentalToggle.className = "rental-details-summary";
+    if (upcomingAndActive) {
+      rentalToggle.draggable = true;
+      rentalToggle.dataset.rentalId = rental.id;
+      rentalToggle.classList.add("is-draggable");
+      rentalToggle.setAttribute("aria-label", `Lịch sắp tới, kéo để chuyển phòng. ${formatRentalDetailsDateTime(rental.starts_at)}`);
+    }
+    const statusLabel = document.createElement("strong");
+    statusLabel.className = `rental-status-label ${startsAt <= now && now < endsAt ? "is-current" : startsAt > now ? "is-upcoming" : "is-completed"}`;
+    statusLabel.textContent = status;
+    const rentalTimes = document.createElement("span");
+    rentalTimes.className = "rental-summary-times";
+    [
+      ["Thuê", rental.starts_at],
+      ["Trả", rental.ends_at],
+    ].forEach(([label, value]) => {
+      const time = document.createElement("span");
+      time.className = "rental-summary-time";
+      const timeLabel = document.createElement("small");
+      const timeValue = document.createElement("strong");
+      timeLabel.textContent = label;
+      timeValue.textContent = formatRentalDetailsDateTime(value);
+      time.append(timeLabel, timeValue);
+      rentalTimes.append(time);
+    });
+    rentalToggle.append(statusLabel, rentalTimes);
+    const details = document.createElement("dl");
+    details.className = "rental-details-expanded";
+    [
+      ["Tên khách", rental.customer_name || "Chưa có thông tin"],
+      ["Số điện thoại", rental.customer_phone || "Chưa có thông tin"],
+      ["CCCD", rental.customer_identity || "Chưa có thông tin"],
+      ["Ngày giờ thuê", formatRentalDetailsDateTime(rental.starts_at)],
+      ["Ngày giờ trả phòng", formatRentalDetailsDateTime(rental.ends_at)],
+    ].forEach(([label, value]) => {
+      const row = document.createElement("div");
+      const term = document.createElement("dt");
+      const description = document.createElement("dd");
+      term.textContent = label;
+      description.textContent = value;
+      row.append(term, description);
+      details.append(row);
+    });
+    item.append(rentalToggle, details);
+    rentalsList.append(item);
+  });
+  if (!rentalsList.childElementCount) {
+    const emptyMessage = document.createElement("p");
+    emptyMessage.textContent = "Phòng chưa có lượt thuê.";
+    rentalsList.append(emptyMessage);
+  }
+  document.querySelector("#toggleRentalTransfer").setAttribute(
+    "aria-expanded",
+    String(!rentalTransferPanel.classList.contains("hidden")),
+  );
+  renderTransferRoomResults();
+  rentalDetailsModal.classList.remove("hidden");
+  document.querySelector("#closeRentalDetails").focus();
+}
+
+function closeRentalDetails() {
+  rentalDetailsModal.classList.add("hidden");
+}
+
+async function transferUpcomingRental(rentalId) {
+  if (!transferTargetRoomId) {
+    rentalTransferMessage.textContent = "Vui lòng tìm và chọn phòng đích.";
+    rentalTransferMessage.classList.add("is-error");
+    return;
+  }
+  rentalTransferMessage.textContent = "";
+  rentalTransferMessage.classList.remove("is-error", "is-success");
+  try {
+    const response = await fetch(`/api/rentals/${rentalId}/transfer`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_room_id: transferTargetRoomId }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      rentalTransferMessage.textContent = result.message === "Thời gian trùng lặp."
+        ? "Thời gian trùng lặp"
+        : result.message || "Không thể chuyển lịch thuê.";
+      rentalTransferMessage.classList.add("is-error");
+      return;
+    }
+    rentalTransferMessage.textContent = result.message;
+    rentalTransferMessage.classList.add("is-success");
+    await loadRooms();
+    const updatedRoom = (window.__roomList || []).find(
+      (room) => room.id === rentalDetailsRoomId,
+    );
+    if (updatedRoom) openRentalDetails(updatedRoom);
+    showSuccessToast(result.message);
+  } catch {
+    rentalTransferMessage.textContent = "Không thể kết nối máy chủ. Lịch vẫn ở phòng cũ.";
+    rentalTransferMessage.classList.add("is-error");
+  }
 }
 
 async function loadRooms() {
@@ -989,6 +1203,9 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !avatarViewModal.classList.contains("hidden")) {
     closeAvatarView();
   }
+  if (event.key === "Escape" && !rentalDetailsModal.classList.contains("hidden")) {
+    closeRentalDetails();
+  }
 });
 
 logoutButton.addEventListener("click", async () => {
@@ -1093,7 +1310,66 @@ document.querySelector("#closeAvatarView").addEventListener("click", closeAvatar
 avatarViewModal.addEventListener("click", (event) => {
   if (event.target === avatarViewModal) closeAvatarView();
 });
-document.querySelector("#openProfileButton").addEventListener("click", openProfileForm);
+overviewRoomsGrid.addEventListener("click", (event) => {
+  const card = event.target.closest(".overview-room-card[data-room-id]");
+  if (!card) return;
+  const room = (window.__roomList || []).find((item) => String(item.id) === card.dataset.roomId);
+  if (room?.rentals?.length) openRentalDetails(room);
+});
+overviewRoomsGrid.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const card = event.target.closest(".overview-room-card[data-room-id]");
+  if (!card) return;
+  event.preventDefault();
+  const room = (window.__roomList || []).find((item) => String(item.id) === card.dataset.roomId);
+  if (room?.rentals?.length) openRentalDetails(room);
+});
+document.querySelector("#closeRentalDetails").addEventListener("click", closeRentalDetails);
+document.querySelector("#toggleRentalTransfer").addEventListener("click", (event) => {
+  const isOpening = rentalTransferPanel.classList.contains("hidden");
+  rentalTransferPanel.classList.toggle("hidden", !isOpening);
+  event.currentTarget.setAttribute("aria-expanded", String(isOpening));
+  if (isOpening) transferRoomSearch.focus();
+});
+transferRoomSearch.addEventListener("input", () => {
+  transferTargetRoomId = null;
+  transferRoomSelected.textContent = "Chọn phòng đích để bắt đầu.";
+  rentalTransferDropzone.textContent = "Chọn phòng đích, sau đó kéo lịch sắp tới vào đây.";
+  rentalTransferDropzone.classList.remove("is-ready");
+  rentalTransferMessage.textContent = "";
+  rentalTransferMessage.classList.remove("is-error", "is-success");
+  renderTransferRoomResults();
+});
+rentalDetailsList.addEventListener("dragstart", (event) => {
+  const rentalSummary = event.target.closest("summary[data-rental-id]");
+  if (!rentalSummary) return;
+  event.dataTransfer.setData("text/plain", rentalSummary.dataset.rentalId);
+  event.dataTransfer.effectAllowed = "move";
+  rentalTransferDropzone.classList.add("is-dragging");
+});
+rentalDetailsList.addEventListener("dragend", () => {
+  rentalTransferDropzone.classList.remove("is-dragging");
+});
+rentalTransferDropzone.addEventListener("dragover", (event) => {
+  if (!transferTargetRoomId) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  rentalTransferDropzone.classList.add("is-dragging");
+});
+rentalTransferDropzone.addEventListener("dragleave", (event) => {
+  if (!rentalTransferDropzone.contains(event.relatedTarget)) {
+    rentalTransferDropzone.classList.remove("is-dragging");
+  }
+});
+rentalTransferDropzone.addEventListener("drop", async (event) => {
+  event.preventDefault();
+  rentalTransferDropzone.classList.remove("is-dragging");
+  const rentalId = Number(event.dataTransfer.getData("text/plain"));
+  if (Number.isInteger(rentalId) && rentalId > 0) {
+    await transferUpcomingRental(rentalId);
+  }
+});
+document.querySelector("#openProfileButton").addEventListener("click", () => openProfileForm());
 document.querySelector("#cancelProfileForm").addEventListener("click", closeProfileForm);
 profileAvatarInput.addEventListener("change", () => {
   const file = profileAvatarInput.files[0];
@@ -1430,3 +1706,13 @@ async function restoreSession() {
 
 resetRoomForm();
 restoreSession();
+setInterval(() => {
+  if (currentUser && !document.hidden && !dashboardView.classList.contains("hidden")) {
+    loadRooms();
+  }
+}, 30000);
+document.addEventListener("visibilitychange", () => {
+  if (currentUser && !document.hidden && !dashboardView.classList.contains("hidden")) {
+    loadRooms();
+  }
+});

@@ -113,21 +113,33 @@ class Database:
                     ends_at TEXT NOT NULL,
                     nights INTEGER NOT NULL,
                     total_price REAL NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'completed'))
+                    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'completed')),
+                    cleaning_released INTEGER NOT NULL DEFAULT 0
                 )
                 """
             )
             rental_columns = {
                 row["name"] for row in connection.execute("PRAGMA table_info(rentals)")
             }
-            for column in ("customer_name", "customer_phone"):
+            for column in (
+                "customer_name",
+                "customer_phone",
+                "customer_identity",
+                "cleaning_released",
+            ):
                 if column not in rental_columns:
-                    connection.execute(
-                        f"ALTER TABLE rentals ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
-                    )
+                    if column == "cleaning_released":
+                        connection.execute(
+                            "ALTER TABLE rentals ADD COLUMN cleaning_released INTEGER NOT NULL DEFAULT 0"
+                        )
+                    else:
+                        connection.execute(
+                            f"ALTER TABLE rentals ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
+                        )
+            connection.execute("DROP INDEX IF EXISTS one_active_rental_per_room")
             connection.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS one_active_rental_per_room "
-                "ON rentals(room_id) WHERE status = 'active'"
+                "CREATE INDEX IF NOT EXISTS rentals_room_status_start "
+                "ON rentals(room_id, status, starts_at)"
             )
             existing_user = connection.execute(
                 "SELECT id FROM users WHERE email = ?", (DEMO_EMAIL,)
