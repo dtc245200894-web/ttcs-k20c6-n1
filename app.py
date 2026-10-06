@@ -196,7 +196,11 @@ def create_rental():
     if isinstance(room_id, str) and room_id.isdigit():
         room_id = int(room_id)
     ok, message, rental = room_service.rent_room(
-        room_id, payload.get("starts_at"), payload.get("ends_at")
+        room_id,
+        payload.get("starts_at"),
+        payload.get("ends_at"),
+        payload.get("customer_name"),
+        payload.get("customer_phone"),
     )
     return jsonify({"ok": ok, "message": message, "rental": rental}), 201 if ok else 400
 

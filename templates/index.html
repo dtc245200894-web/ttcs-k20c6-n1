@@ -65,9 +65,15 @@
       <section class="dashboard-view hidden" id="dashboardView">
         <header class="dashboard-header">
           <div class="dashboard-identity">
-            <div class="dashboard-avatar" aria-hidden="true">
-              <img class="hidden" id="dashboardAvatar" alt="">
-              <span id="dashboardAvatarPlaceholder">LS</span>
+            <div class="dashboard-avatar-menu" id="dashboardAvatarMenu">
+              <button class="dashboard-avatar" id="dashboardAvatarButton" type="button" aria-label="Tùy chọn ảnh đại diện" aria-expanded="false" aria-controls="dashboardAvatarActions">
+                <img class="hidden" id="dashboardAvatar" alt="">
+                <span id="dashboardAvatarPlaceholder">LS</span>
+              </button>
+              <div class="dashboard-avatar-dropdown hidden" id="dashboardAvatarActions">
+                <button class="avatar-action-button" id="viewAvatarButton" type="button">Xem ảnh đại diện</button>
+                <button class="avatar-action-button" id="changeAvatarButton" type="button">Đổi ảnh đại diện</button>
+              </div>
             </div>
             <div>
               <p class="kicker">LOTUS STAY / TRANG CHỦ</p>
@@ -242,20 +248,38 @@
                 <h3 id="rentalFormTitle">Thuê phòng</h3>
               </div>
               <form id="rentalForm" novalidate>
+                <label for="rentalCustomerName">Tên khách</label>
+                <input id="rentalCustomerName" name="customer_name" type="text" autocomplete="name" maxlength="120" placeholder="Nhập tên khách" required>
+                <label for="rentalCustomerPhone">Số điện thoại</label>
+                <input id="rentalCustomerPhone" name="customer_phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="[0-9]{10}" maxlength="10" placeholder="Nhập số điện thoại 10 chữ số" required>
                 <label for="rentalRoom">Phòng trống</label>
-                <select id="rentalRoom" name="room_id" required>
-                  <option value="">Chọn phòng</option>
-                </select>
+                <div class="rental-room-search">
+                  <input id="rentalRoom" type="search" placeholder="Nhập mã phòng để tìm" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rentalRoomResults" required>
+                  <input id="rentalRoomId" name="room_id" type="hidden">
+                  <div class="rental-room-results hidden" id="rentalRoomResults" role="listbox"></div>
+                </div>
                 <section class="rental-room-details" id="rentalRoomDetails" aria-live="polite">
                   <p>Thông tin phòng sẽ hiển thị tại đây.</p>
                 </section>
-                <label for="rentalStart">Giờ bắt đầu thuê</label>
-                <input id="rentalStart" name="starts_at" type="datetime-local" readonly required>
-                <label for="rentalEnd">Ngày trả phòng</label>
-                <input id="rentalEnd" name="ends_on" type="date" required>
-                <div class="rental-checkout-time">
-                  <span>Giờ trả phòng (theo giờ nhận)</span>
-                  <output id="rentalCheckoutTime">--:--</output>
+                <div class="field-row two-col">
+                  <div>
+                    <label for="rentalStartDate">Ngày thuê</label>
+                    <input id="rentalStartDate" type="date" required>
+                  </div>
+                  <div>
+                    <label for="rentalStartTime">Giờ bắt đầu thuê</label>
+                    <input id="rentalStartTime" type="time" required>
+                  </div>
+                </div>
+                <div class="field-row two-col">
+                  <div>
+                    <label for="rentalEnd">Ngày trả phòng</label>
+                    <input id="rentalEnd" name="ends_on" type="date" required>
+                  </div>
+                  <div>
+                    <label for="rentalCheckoutTime">Giờ trả phòng</label>
+                    <output class="rental-checkout-time" id="rentalCheckoutTime">--:--</output>
+                  </div>
                 </div>
                 <div class="rental-total" aria-live="polite">
                   <span id="rentalDuration">Thời lượng: 0 đêm</span>
@@ -375,6 +399,16 @@
             </div>
           </form>
         </aside>
+      </div>
+      <div class="room-modal hidden" id="avatarViewModal">
+        <section class="avatar-viewer" role="dialog" aria-modal="true" aria-labelledby="avatarViewTitle">
+          <div class="avatar-viewer-header">
+            <h3 id="avatarViewTitle">Ảnh đại diện</h3>
+            <button class="secondary-button" id="closeAvatarView" type="button">Đóng</button>
+          </div>
+          <img class="hidden" id="avatarViewImage" alt="Ảnh đại diện">
+          <p class="avatar-viewer-placeholder hidden" id="avatarViewPlaceholder" aria-live="polite"></p>
+        </section>
       </div>
       <footer class="workspace-footer">LOTUS STAY <span>·</span> HỆ THỐNG QUẢN LÝ KHÁCH SẠN</footer>
     </section>

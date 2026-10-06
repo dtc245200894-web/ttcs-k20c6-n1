@@ -306,10 +306,19 @@ class RoomService:
         return [dict(row) for row in rows]
 
     def rent_room(
-        self, room_id: int, starts_at: str, ends_at: str
+        self,
+        room_id: int,
+        starts_at: str,
+        ends_at: str,
+        customer_name: str,
+        customer_phone: str,
     ) -> tuple[bool, str, dict[str, Any] | None]:
         if isinstance(room_id, bool) or not isinstance(room_id, int) or room_id < 1:
             return False, "Phòng được chọn không hợp lệ.", None
+        if not isinstance(customer_name, str) or not customer_name.strip() or len(customer_name.strip()) > 120:
+            return False, "Vui lòng nhập tên khách hợp lệ.", None
+        if not isinstance(customer_phone, str) or not re.fullmatch(r"\d{10}", customer_phone.strip()):
+            return False, "Số điện thoại khách phải gồm đúng 10 chữ số.", None
         if not isinstance(starts_at, str) or not isinstance(ends_at, str):
             return False, "Vui lòng chọn thời gian trả phòng hợp lệ.", None
         try:
@@ -319,8 +328,10 @@ class RoomService:
             return False, "Vui lòng chọn thời gian trả phòng hợp lệ.", None
         if start.tzinfo is not None or checkout.tzinfo is not None:
             return False, "Thời gian thuê phòng không hợp lệ.", None
-        if abs((start - datetime.now()).total_seconds()) > 120:
-            return False, "Giờ bắt đầu thuê đã thay đổi. Vui lòng thử lại.", None
+        if start.date() < date.today():
+            return False, "Ngày thuê phòng không được trước ngày hôm nay.", None
+        if start < datetime.now().replace(second=0, microsecond=0):
+            return False, "Giờ thuê phòng không được trước thời gian hiện tại.", None
         if checkout.time() != start.time():
             return False, "Giờ trả phòng phải trùng với giờ thuê phòng vào.", None
         nights = (checkout.date() - start.date()).days
@@ -341,8 +352,16 @@ class RoomService:
                 start_value = start.isoformat(timespec="minutes")
                 end_value = checkout.isoformat(timespec="minutes")
                 connection.execute(
-                    "INSERT INTO rentals(room_id, starts_at, ends_at, nights, total_price) VALUES (?, ?, ?, ?, ?)",
-                    (room_id, start_value, end_value, nights, total_price),
+                    "INSERT INTO rentals(room_id, customer_name, customer_phone, starts_at, ends_at, nights, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        room_id,
+                        customer_name.strip(),
+                        customer_phone.strip(),
+                        start_value,
+                        end_value,
+                        nights,
+                        total_price,
+                    ),
                 )
                 updated = connection.execute(
                     "UPDATE rooms SET status = 'occupied', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'available'",
@@ -355,6 +374,8 @@ class RoomService:
 
         return True, "Thuê phòng thành công.", {
             "room_id": room_id,
+            "customer_name": customer_name.strip(),
+            "customer_phone": customer_phone.strip(),
             "check_in": start_value,
             "check_out": end_value,
             "nights": nights,
