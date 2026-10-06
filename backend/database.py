@@ -107,6 +107,8 @@ class Database:
                 CREATE TABLE IF NOT EXISTS rentals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     room_id INTEGER NOT NULL REFERENCES rooms(id),
+                    customer_name TEXT NOT NULL DEFAULT '',
+                    customer_phone TEXT NOT NULL DEFAULT '',
                     starts_at TEXT NOT NULL,
                     ends_at TEXT NOT NULL,
                     nights INTEGER NOT NULL,
@@ -115,6 +117,14 @@ class Database:
                 )
                 """
             )
+            rental_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(rentals)")
+            }
+            for column in ("customer_name", "customer_phone"):
+                if column not in rental_columns:
+                    connection.execute(
+                        f"ALTER TABLE rentals ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
+                    )
             connection.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS one_active_rental_per_room "
                 "ON rentals(room_id) WHERE status = 'active'"
