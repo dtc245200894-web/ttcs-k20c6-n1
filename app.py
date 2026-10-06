@@ -195,14 +195,36 @@ def create_rental():
     room_id = payload.get("room_id")
     if isinstance(room_id, str) and room_id.isdigit():
         room_id = int(room_id)
+    if isinstance(room_id, bool) or not isinstance(room_id, int):
+        return jsonify({"ok": False, "message": "Phòng được chọn không hợp lệ."}), 400
+    customer_identity = payload.get("customer_identity")
+    if not isinstance(customer_identity, str):
+        return jsonify({"ok": False, "message": "Số CCCD khách phải gồm đúng 12 chữ số."}), 400
     ok, message, rental = room_service.rent_room(
         room_id,
         payload.get("starts_at"),
         payload.get("ends_at"),
         payload.get("customer_name"),
         payload.get("customer_phone"),
+        customer_identity,
     )
     return jsonify({"ok": ok, "message": message, "rental": rental}), 201 if ok else 400
+
+
+@app.put("/api/rentals/<int:rental_id>/transfer")
+def transfer_upcoming_rental(rental_id):
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+
+    payload = request.get_json(silent=True) or {}
+    target_room_id = payload.get("target_room_id")
+    if isinstance(target_room_id, str) and target_room_id.isdigit():
+        target_room_id = int(target_room_id)
+    if isinstance(target_room_id, bool) or not isinstance(target_room_id, int):
+        return jsonify({"ok": False, "message": "Phòng đích không hợp lệ."}), 400
+
+    ok, message = room_service.transfer_upcoming_rental(rental_id, target_room_id)
+    return jsonify({"ok": ok, "message": message}), 200 if ok else 400
 
 
 @app.get("/api/room-types")

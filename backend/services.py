@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -292,18 +292,67 @@ class RoomService:
         return True, f"Đã chuyển {moved_count} phòng đã chọn sang thể loại mới.", moved_count
 
     def list_rooms(self) -> list[dict[str, Any]]:
+        now = datetime.now().replace(second=0, microsecond=0)
+        now_value = now.isoformat(timespec="minutes")
         with self.database.connect() as connection:
-            rows = connection.execute(
+            room_rows = connection.execute(
                 """
-                SELECT rooms.*,
-                       rentals.starts_at AS check_in,
-                       rentals.ends_at AS check_out
+                SELECT *
                 FROM rooms
-                LEFT JOIN rentals ON rentals.room_id = rooms.id AND rentals.status = 'active'
                 ORDER BY rooms.floor, rooms.code ASC
                 """
             ).fetchall()
-        return [dict(row) for row in rows]
+            rental_rows = connection.execute(
+                """
+                SELECT id, room_id, customer_name, customer_phone, customer_identity, starts_at, ends_at,
+                       nights, total_price, status, cleaning_released
+                FROM rentals
+                ORDER BY starts_at, id
+                """
+            ).fetchall()
+
+        rentals_by_room: dict[int, list[dict[str, Any]]] = {}
+        for row in rental_rows:
+            rentals_by_room.setdefault(row["room_id"], []).append(dict(row))
+
+        rooms: list[dict[str, Any]] = []
+        for row in room_rows:
+            room = dict(row)
+            room_rentals = rentals_by_room.get(room["id"], [])
+            current_rental = next(
+                (
+                    rental
+                    for rental in room_rentals
+                    if rental["status"] == "active"
+                    and rental["starts_at"] <= now_value < rental["ends_at"]
+                ),
+                None,
+            )
+            recent_checkout = next(
+                (
+                    rental
+                    for rental in reversed(room_rentals)
+                    if rental["status"] == "active"
+                    and timedelta(0)
+                    <= now - datetime.fromisoformat(rental["ends_at"])
+                    < timedelta(minutes=30)
+                ),
+                None,
+            )
+            if room["status"] != "maintenance":
+                if current_rental:
+                    room["status"] = "occupied"
+                elif recent_checkout and not recent_checkout["cleaning_released"]:
+                    room["status"] = "cleaning"
+                elif room["status"] != "cleaning":
+                    room["status"] = "available"
+            room["rentals"] = room_rentals
+            room["check_in"] = current_rental["starts_at"] if current_rental else None
+            room["check_out"] = current_rental["ends_at"] if current_rental else None
+            room["customer_name"] = current_rental["customer_name"] if current_rental else None
+            room["customer_phone"] = current_rental["customer_phone"] if current_rental else None
+            rooms.append(room)
+        return rooms
 
     def rent_room(
         self,
@@ -312,6 +361,7 @@ class RoomService:
         ends_at: str,
         customer_name: str,
         customer_phone: str,
+        customer_identity: str,
     ) -> tuple[bool, str, dict[str, Any] | None]:
         if isinstance(room_id, bool) or not isinstance(room_id, int) or room_id < 1:
             return False, "Phòng được chọn không hợp lệ.", None
@@ -319,6 +369,8 @@ class RoomService:
             return False, "Vui lòng nhập tên khách hợp lệ.", None
         if not isinstance(customer_phone, str) or not re.fullmatch(r"\d{10}", customer_phone.strip()):
             return False, "Số điện thoại khách phải gồm đúng 10 chữ số.", None
+        if not isinstance(customer_identity, str) or not re.fullmatch(r"\d{12}", customer_identity.strip()):
+            return False, "Số CCCD khách phải gồm đúng 12 chữ số.", None
         if not isinstance(starts_at, str) or not isinstance(ends_at, str):
             return False, "Vui lòng chọn thời gian trả phòng hợp lệ.", None
         try:
@@ -342,45 +394,147 @@ class RoomService:
             with self.database.connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
                 room = connection.execute(
-                    "SELECT * FROM rooms WHERE id = ? AND status = 'available'",
+                    "SELECT * FROM rooms WHERE id = ? AND status IN ('available', 'occupied')",
                     (room_id,),
                 ).fetchone()
                 if room is None:
-                    return False, "Phòng không tồn tại hoặc không còn trống.", None
+                    return False, "Phòng không tồn tại hoặc hiện không thể cho thuê.", None
 
                 total_price = round(nights * room["price"], 2)
                 start_value = start.isoformat(timespec="minutes")
                 end_value = checkout.isoformat(timespec="minutes")
+                minimum_gap = timedelta(minutes=30)
+                overlapping_rental = connection.execute(
+                    """
+                    SELECT 1 FROM rentals
+                    WHERE room_id = ? AND status = 'active'
+                      AND starts_at < ? AND ends_at > ?
+                    LIMIT 1
+                    """,
+                    (
+                        room_id,
+                        (checkout + minimum_gap).isoformat(timespec="minutes"),
+                        (start - minimum_gap).isoformat(timespec="minutes"),
+                    ),
+                ).fetchone()
+                if overlapping_rental is not None:
+                    return False, "Các lượt thuê cùng phòng phải cách nhau ít nhất 30 phút.", None
+
                 connection.execute(
-                    "INSERT INTO rentals(room_id, customer_name, customer_phone, starts_at, ends_at, nights, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO rentals(room_id, customer_name, customer_phone, customer_identity, starts_at, ends_at, nights, total_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         room_id,
                         customer_name.strip(),
                         customer_phone.strip(),
+                        customer_identity.strip(),
                         start_value,
                         end_value,
                         nights,
                         total_price,
                     ),
                 )
-                updated = connection.execute(
-                    "UPDATE rooms SET status = 'occupied', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'available'",
-                    (room_id,),
-                )
-                if updated.rowcount == 0:
-                    return False, "Phòng không còn trống. Vui lòng tải lại danh sách.", None
         except sqlite3.IntegrityError:
-            return False, "Phòng đã có lượt thuê đang hoạt động.", None
+            return False, "Không thể lưu lượt thuê do dữ liệu phòng đã thay đổi.", None
 
         return True, "Thuê phòng thành công.", {
             "room_id": room_id,
             "customer_name": customer_name.strip(),
             "customer_phone": customer_phone.strip(),
+            "customer_identity": customer_identity.strip(),
             "check_in": start_value,
             "check_out": end_value,
             "nights": nights,
             "total_price": total_price,
         }
+
+    def transfer_upcoming_rental(
+        self,
+        rental_id: int,
+        target_room_id: int,
+    ) -> tuple[bool, str]:
+        if (
+            isinstance(rental_id, bool)
+            or not isinstance(rental_id, int)
+            or rental_id < 1
+            or isinstance(target_room_id, bool)
+            or not isinstance(target_room_id, int)
+            or target_room_id < 1
+        ):
+            return False, "Thông tin chuyển lịch không hợp lệ."
+
+        try:
+            with self.database.connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                now = datetime.now().replace(second=0, microsecond=0)
+                now_value = now.isoformat(timespec="minutes")
+                rental = connection.execute(
+                    """
+                    SELECT id, room_id, starts_at, ends_at
+                    FROM rentals
+                    WHERE id = ? AND status = 'active' AND starts_at > ?
+                    """,
+                    (rental_id, now_value),
+                ).fetchone()
+                if rental is None:
+                    return False, "Chỉ có thể chuyển các lịch thuê sắp tới."
+                if rental["room_id"] == target_room_id:
+                    return False, "Vui lòng chọn phòng khác phòng hiện tại."
+
+                target_room = connection.execute(
+                    "SELECT status FROM rooms WHERE id = ?",
+                    (target_room_id,),
+                ).fetchone()
+                if target_room is None or target_room["status"] in {
+                    "cleaning",
+                    "maintenance",
+                }:
+                    return False, "Phòng đích hiện không thể nhận lịch thuê."
+                recent_checkout = connection.execute(
+                    """
+                    SELECT 1 FROM rentals
+                    WHERE room_id = ? AND status = 'active'
+                      AND cleaning_released = 0
+                      AND ends_at > ? AND ends_at <= ?
+                    LIMIT 1
+                    """,
+                    (
+                        target_room_id,
+                        (now - timedelta(minutes=30)).isoformat(timespec="minutes"),
+                        now_value,
+                    ),
+                ).fetchone()
+                if recent_checkout is not None:
+                    return False, "Phòng đích hiện đang được dọn."
+
+                minimum_gap = timedelta(minutes=30)
+                conflicting_rental = connection.execute(
+                    """
+                    SELECT 1 FROM rentals
+                    WHERE room_id = ? AND status = 'active'
+                      AND starts_at < ? AND ends_at > ?
+                    LIMIT 1
+                    """,
+                    (
+                        target_room_id,
+                        (
+                            datetime.fromisoformat(rental["ends_at"]) + minimum_gap
+                        ).isoformat(timespec="minutes"),
+                        (
+                            datetime.fromisoformat(rental["starts_at"]) - minimum_gap
+                        ).isoformat(timespec="minutes"),
+                    ),
+                ).fetchone()
+                if conflicting_rental is not None:
+                    return False, "Thời gian trùng lặp."
+
+                connection.execute(
+                    "UPDATE rentals SET room_id = ? WHERE id = ?",
+                    (target_room_id, rental_id),
+                )
+        except sqlite3.IntegrityError:
+            return False, "Không thể chuyển lịch thuê do dữ liệu đã thay đổi."
+
+        return True, "Đã chuyển lịch thuê sang phòng mới."
 
     def create_room(self, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any] | None]:
         if isinstance(payload, dict):
@@ -431,23 +585,72 @@ class RoomService:
                 if current_room is None:
                     return False, "Phòng không tồn tại.", None
 
-                active_rental = connection.execute(
-                    "SELECT 1 FROM rentals WHERE room_id = ? AND status = 'active'",
-                    (room_id,),
+                now = datetime.now().replace(second=0, microsecond=0)
+                now_value = now.isoformat(timespec="minutes")
+                current_rental = connection.execute(
+                    """
+                    SELECT 1 FROM rentals
+                    WHERE room_id = ? AND status = 'active'
+                      AND starts_at <= ? AND ends_at > ?
+                    LIMIT 1
+                    """,
+                    (room_id, now_value, now_value),
                 ).fetchone()
                 requested_status = str(
                     payload.get("status", current_room["status"])
                 ).strip().lower()
-                if requested_status == "occupied" and current_room["status"] != "occupied":
-                    return False, "Chỉ có thể chuyển phòng sang trạng thái đã thuê khi tạo lượt thuê.", None
-                if requested_status == "occupied" and active_rental is None:
-                    return False, "Chỉ phòng đang có người thuê mới được mang trạng thái đã thuê.", None
-                if active_rental is not None and requested_status != "occupied":
-                    return False, "Không thể đổi trạng thái phòng khi đang có người thuê.", None
-
-                normalized = self._normalize_room_data(
-                    {**payload, "status": requested_status}
+                latest_checkout = connection.execute(
+                    """
+                    SELECT id, ends_at FROM rentals
+                    WHERE room_id = ? AND status = 'active' AND ends_at <= ?
+                    ORDER BY ends_at DESC, id DESC
+                    LIMIT 1
+                    """,
+                    (room_id, now_value),
+                ).fetchone()
+                should_release_cleaning = (
+                    requested_status == "available"
+                    and current_rental is None
+                    and latest_checkout is not None
+                    and timedelta(0)
+                    <= now - datetime.fromisoformat(latest_checkout["ends_at"])
+                    < timedelta(minutes=30)
                 )
+                future_rental = connection.execute(
+                    """
+                    SELECT 1 FROM rentals
+                    WHERE room_id = ? AND status = 'active' AND ends_at > ?
+                    LIMIT 1
+                    """,
+                    (room_id, now_value),
+                ).fetchone()
+                if requested_status == "occupied" and current_rental is None:
+                    return False, "Chỉ phòng đang có người thuê mới được mang trạng thái đã thuê.", None
+                if future_rental is not None and requested_status in {"cleaning", "maintenance"}:
+                    return False, "Không thể bảo trì hoặc dọn phòng khi đã có lịch thuê sắp tới.", None
+
+                persisted_status = requested_status
+                checkout_is_cleaning = (
+                    latest_checkout is not None
+                    and timedelta(0)
+                    <= now - datetime.fromisoformat(latest_checkout["ends_at"])
+                    < timedelta(minutes=30)
+                )
+                if (
+                    requested_status == "cleaning"
+                    and current_rental is None
+                    and checkout_is_cleaning
+                    and current_room["status"] != "cleaning"
+                ):
+                    persisted_status = current_room["status"]
+                normalized = self._normalize_room_data(
+                    {**payload, "status": persisted_status}
+                )
+                if should_release_cleaning and latest_checkout is not None:
+                    connection.execute(
+                        "UPDATE rentals SET cleaning_released = 1 WHERE id = ?",
+                        (latest_checkout["id"],),
+                    )
                 updated = connection.execute(
                     """
                     UPDATE rooms

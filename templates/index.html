@@ -252,7 +252,9 @@
                 <input id="rentalCustomerName" name="customer_name" type="text" autocomplete="name" maxlength="120" placeholder="Nhập tên khách" required>
                 <label for="rentalCustomerPhone">Số điện thoại</label>
                 <input id="rentalCustomerPhone" name="customer_phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="[0-9]{10}" maxlength="10" placeholder="Nhập số điện thoại 10 chữ số" required>
-                <label for="rentalRoom">Phòng trống</label>
+                <label for="rentalCustomerIdentity">CCCD</label>
+                <input id="rentalCustomerIdentity" name="customer_identity" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]{12}" maxlength="12" placeholder="Nhập số CCCD 12 chữ số" required>
+                <label for="rentalRoom">Tìm phòng</label>
                 <div class="rental-room-search">
                   <input id="rentalRoom" type="search" placeholder="Nhập mã phòng để tìm" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rentalRoomResults" required>
                   <input id="rentalRoomId" name="room_id" type="hidden">
@@ -409,6 +411,31 @@
           <img class="hidden" id="avatarViewImage" alt="Ảnh đại diện">
           <p class="avatar-viewer-placeholder hidden" id="avatarViewPlaceholder" aria-live="polite"></p>
         </section>
+      </div>
+      <div class="room-modal hidden" id="rentalDetailsModal">
+        <div class="rental-details-layout">
+          <section class="rental-details-dialog" role="dialog" aria-modal="true" aria-labelledby="rentalDetailsTitle">
+            <div class="avatar-viewer-header">
+              <h3 id="rentalDetailsTitle">Lịch thuê phòng</h3>
+              <div class="rental-details-actions">
+                <button class="secondary-button" id="toggleRentalTransfer" type="button" aria-expanded="false" aria-controls="rentalTransferPanel">Chuyển đổi</button>
+                <button class="secondary-button" id="closeRentalDetails" type="button">Đóng</button>
+              </div>
+            </div>
+            <div class="rental-details-list" id="rentalDetailsList"></div>
+          </section>
+          <aside class="rental-transfer-panel hidden" id="rentalTransferPanel" aria-label="Chuyển lịch thuê">
+            <h3>Chuyển lịch thuê</h3>
+            <label for="transferRoomSearch">Tìm phòng theo mã</label>
+            <div class="transfer-room-search">
+              <input id="transferRoomSearch" type="search" placeholder="Nhập mã phòng" autocomplete="off" aria-controls="transferRoomResults" aria-expanded="false">
+              <div class="transfer-room-results hidden" id="transferRoomResults" role="listbox"></div>
+            </div>
+            <p class="rental-transfer-selected" id="transferRoomSelected">Chọn phòng đích để bắt đầu.</p>
+            <div class="rental-transfer-dropzone" id="rentalTransferDropzone">Chọn phòng đích, sau đó kéo lịch sắp tới vào đây.</div>
+            <p class="rental-transfer-message" id="rentalTransferMessage" role="status" aria-live="polite"></p>
+          </aside>
+        </div>
       </div>
       <footer class="workspace-footer">LOTUS STAY <span>·</span> HỆ THỐNG QUẢN LÝ KHÁCH SẠN</footer>
     </section>
