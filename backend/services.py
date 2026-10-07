@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import re
+import hashlib
+import hmac
 import sqlite3
 import unicodedata
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -37,6 +39,106 @@ class AuthService:
             "phone": user["phone"],
             "avatar_url": user["avatar_url"],
         }
+
+    def issue_password_reset_code(self, email: str, code: str, secret: str) -> str:
+        if not isinstance(email, str):
+            return "ignored"
+        email = email.strip().lower()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            return "ignored"
+
+        now = datetime.now(timezone.utc)
+        with self.database.connect() as connection:
+            user = connection.execute(
+                "SELECT 1 FROM users WHERE email = ?", (email,)
+            ).fetchone()
+            if user is None:
+                return "ignored"
+
+            previous = connection.execute(
+                "SELECT sent_at FROM password_reset_codes WHERE email = ?", (email,)
+            ).fetchone()
+            if previous is not None:
+                sent_at = datetime.fromisoformat(previous["sent_at"])
+                if now - sent_at < timedelta(seconds=60):
+                    return "throttled"
+
+            code_hash = hmac.new(
+                secret.encode(), f"{email}:{code}".encode(), hashlib.sha256
+            ).hexdigest()
+            connection.execute(
+                """
+                INSERT INTO password_reset_codes(email, code_hash, expires_at, sent_at, attempts)
+                VALUES (?, ?, ?, ?, 0)
+                ON CONFLICT(email) DO UPDATE SET
+                    code_hash = excluded.code_hash,
+                    expires_at = excluded.expires_at,
+                    sent_at = excluded.sent_at,
+                    attempts = 0
+                """,
+                (
+                    email,
+                    code_hash,
+                    (now + timedelta(minutes=10)).isoformat(),
+                    now.isoformat(),
+                ),
+            )
+        return "send"
+
+    def clear_password_reset_code(self, email: str) -> None:
+        with self.database.connect() as connection:
+            connection.execute("DELETE FROM password_reset_codes WHERE email = ?", (email,))
+
+    def reset_password(
+        self, email: str, code: str, new_password: str, secret: str
+    ) -> tuple[bool, str]:
+        if not all(isinstance(value, str) for value in (email, code, new_password)):
+            return False, "Thông tin đặt lại mật khẩu không hợp lệ."
+
+        email = email.strip().lower()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            return False, "Email không hợp lệ."
+        if not re.fullmatch(r"[0-9]{6}", code):
+            return False, "Mã xác minh phải gồm 6 chữ số."
+        if len(new_password) < 8 or len(new_password) > 128:
+            return False, "Mật khẩu cần có từ 8 đến 128 ký tự."
+
+        now = datetime.now(timezone.utc)
+        with self.database.connect() as connection:
+            reset = connection.execute(
+                "SELECT * FROM password_reset_codes WHERE email = ?", (email,)
+            ).fetchone()
+            if reset is None:
+                return False, "Mã xác minh không hợp lệ hoặc đã hết hạn."
+            if datetime.fromisoformat(reset["expires_at"]) <= now:
+                connection.execute(
+                    "DELETE FROM password_reset_codes WHERE email = ?", (email,)
+                )
+                return False, "Mã xác minh không hợp lệ hoặc đã hết hạn."
+
+            submitted_hash = hmac.new(
+                secret.encode(), f"{email}:{code}".encode(), hashlib.sha256
+            ).hexdigest()
+            if not hmac.compare_digest(reset["code_hash"], submitted_hash):
+                if reset["attempts"] + 1 >= 5:
+                    connection.execute(
+                        "DELETE FROM password_reset_codes WHERE email = ?", (email,)
+                    )
+                else:
+                    connection.execute(
+                        "UPDATE password_reset_codes SET attempts = attempts + 1 WHERE email = ?",
+                        (email,),
+                    )
+                return False, "Mã xác minh không hợp lệ hoặc đã hết hạn."
+
+            connection.execute(
+                "UPDATE users SET password_hash = ? WHERE email = ?",
+                (generate_password_hash(new_password), email),
+            )
+            connection.execute(
+                "DELETE FROM password_reset_codes WHERE email = ?", (email,)
+            )
+        return True, "Đổi mật khẩu thành công. Bạn có thể đăng nhập."
 
     def get_profile(self, user_id: int) -> dict[str, Any] | None:
         with self.database.connect() as connection:
