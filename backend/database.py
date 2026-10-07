@@ -44,6 +44,17 @@ class Database:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS password_reset_codes (
+                    email TEXT PRIMARY KEY COLLATE NOCASE,
+                    code_hash TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    sent_at TEXT NOT NULL,
+                    attempts INTEGER NOT NULL DEFAULT 0
+                )
+                """
+            )
             user_columns = {
                 row["name"] for row in connection.execute("PRAGMA table_info(users)")
             }

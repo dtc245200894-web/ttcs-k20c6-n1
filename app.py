@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import os
+import secrets
+import smtplib
+import ssl
 from datetime import date
+from email.message import EmailMessage
 from pathlib import Path
 from uuid import uuid4
 
@@ -18,6 +22,12 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "hotel-management-local-
 app.config["DATABASE_PATH"] = os.environ.get("DATABASE_PATH", os.path.join(ROOT, "hotel_management.db"))
 app.config["UPLOAD_FOLDER"] = os.path.join(ROOT, "static", "uploads")
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+app.config["SMTP_HOST"] = os.environ.get("SMTP_HOST", "")
+app.config["SMTP_PORT"] = os.environ.get("SMTP_PORT", "587")
+app.config["SMTP_USERNAME"] = os.environ.get("SMTP_USERNAME", "")
+app.config["SMTP_PASSWORD"] = os.environ.get("SMTP_PASSWORD", "")
+app.config["SMTP_FROM"] = os.environ.get("SMTP_FROM", "")
+app.config["SMTP_USE_TLS"] = os.environ.get("SMTP_USE_TLS", "true").lower() == "true"
 
 database = Database(app.config["DATABASE_PATH"])
 auth_service = AuthService(database)
@@ -61,6 +71,33 @@ def _remove_upload(path):
         path.unlink(missing_ok=True)
 
 
+def _send_password_reset_email(email, code):
+    if not app.config["SMTP_HOST"] or not app.config["SMTP_FROM"]:
+        return False
+
+    message = EmailMessage()
+    message["Subject"] = "Mã xác minh đặt lại mật khẩu Lotus Stay"
+    message["From"] = app.config["SMTP_FROM"]
+    message["To"] = email
+    message.set_content(
+        f"Mã xác minh đặt lại mật khẩu của bạn là: {code}\n"
+        "Mã có hiệu lực trong 10 phút. Nếu bạn không yêu cầu, hãy bỏ qua email này."
+    )
+    try:
+        with smtplib.SMTP(
+            app.config["SMTP_HOST"], int(app.config["SMTP_PORT"]), timeout=10
+        ) as server:
+            if app.config["SMTP_USE_TLS"]:
+                server.starttls(context=ssl.create_default_context())
+            if app.config["SMTP_USERNAME"]:
+                server.login(app.config["SMTP_USERNAME"], app.config["SMTP_PASSWORD"])
+            server.send_message(message)
+    except (OSError, smtplib.SMTPException, ValueError):
+        app.logger.exception("Could not send password reset email")
+        return False
+    return True
+
+
 @app.get("/")
 def index():
     return render_template("index.html", today=date.today().isoformat())
@@ -78,6 +115,39 @@ def login():
     session.clear()
     session["user"] = user
     return jsonify({"ok": True, "message": "Đăng nhập thành công.", "user": user})
+
+
+@app.post("/api/password-reset/request")
+def request_password_reset():
+    if not app.config["SMTP_HOST"] or not app.config["SMTP_FROM"]:
+        return jsonify({
+            "ok": False,
+            "message": "Máy chủ email chưa được cấu hình. Vui lòng liên hệ quản trị viên.",
+        }), 503
+
+    payload = request.get_json(silent=True) or {}
+    email = payload.get("email", "")
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    result = auth_service.issue_password_reset_code(email, code, app.config["SECRET_KEY"])
+    if result == "send" and not _send_password_reset_email(email.strip().lower(), code):
+        auth_service.clear_password_reset_code(email.strip().lower())
+        return jsonify({"ok": False, "message": "Không thể gửi email lúc này. Vui lòng thử lại sau."}), 503
+    return jsonify({
+        "ok": True,
+        "message": "Nếu email đã đăng ký, mã xác minh sẽ được gửi tới hộp thư của bạn.",
+    })
+
+
+@app.post("/api/password-reset/complete")
+def complete_password_reset():
+    payload = request.get_json(silent=True) or {}
+    ok, message = auth_service.reset_password(
+        payload.get("email", ""),
+        payload.get("code", ""),
+        payload.get("new_password", ""),
+        app.config["SECRET_KEY"],
+    )
+    return jsonify({"ok": ok, "message": message}), 200 if ok else 400
 
 
 @app.post("/api/register")

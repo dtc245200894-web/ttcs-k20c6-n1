@@ -1,5 +1,6 @@
 const authView = document.querySelector("#authView");
 const registrationView = document.querySelector("#registrationView");
+const passwordResetView = document.querySelector("#passwordResetView");
 const dashboardView = document.querySelector("#dashboardView");
 const accountMenu = document.querySelector("#accountMenu");
 const accountMenuTrigger = document.querySelector("#accountMenuTrigger");
@@ -32,7 +33,13 @@ let transferTargetRoomId = null;
 const loginForm = document.querySelector("#loginForm");
 const registrationForm = document.querySelector("#registrationForm");
 const formMessage = document.querySelector("#formMessage");
+const formMessageText = document.querySelector("#formMessageText");
+const forgotPasswordLink = document.querySelector("#forgotPasswordLink");
 const registrationMessage = document.querySelector("#registrationMessage");
+const passwordResetRequestForm = document.querySelector("#passwordResetRequestForm");
+const passwordResetCompleteForm = document.querySelector("#passwordResetCompleteForm");
+const passwordResetRequestMessage = document.querySelector("#passwordResetRequestMessage");
+const passwordResetCompleteMessage = document.querySelector("#passwordResetCompleteMessage");
 const roomsGrid = document.querySelector("#roomsGrid");
 const overviewRoomsGrid = document.querySelector("#overviewRoomsGrid");
 const roomForm = document.querySelector("#roomForm");
@@ -300,6 +307,7 @@ function showDashboard(user) {
   document.querySelector("#userRole").textContent = { manager: "Quản lý", staff: "Nhân viên" }[user.role] || user.role;
   authView.classList.add("hidden");
   registrationView.classList.add("hidden");
+  passwordResetView.classList.add("hidden");
   dashboardView.classList.remove("hidden");
   document.querySelector(".page-shell").classList.add("dashboard-mode");
   document.body.classList.add("dashboard-mode");
@@ -312,16 +320,33 @@ function showDashboard(user) {
 function showLogin(message = "") {
   dashboardView.classList.add("hidden");
   registrationView.classList.add("hidden");
+  passwordResetView.classList.add("hidden");
   authView.classList.remove("hidden");
   document.querySelector(".page-shell").classList.remove("dashboard-mode");
   document.body.classList.remove("dashboard-mode");
-  formMessage.textContent = message;
+  formMessageText.textContent = message;
+  forgotPasswordLink.classList.add("hidden");
   formMessage.classList.toggle("success", Boolean(message));
+}
+
+function showPasswordReset() {
+  dashboardView.classList.add("hidden");
+  authView.classList.add("hidden");
+  registrationView.classList.add("hidden");
+  passwordResetView.classList.remove("hidden");
+  document.querySelector(".page-shell").classList.remove("dashboard-mode");
+  document.body.classList.remove("dashboard-mode");
+  document.querySelector("#resetEmail").value = document.querySelector("#email").value.trim();
+  passwordResetRequestMessage.textContent = "";
+  passwordResetCompleteMessage.textContent = "";
+  passwordResetCompleteForm.classList.add("hidden");
+  passwordResetRequestForm.classList.remove("hidden");
 }
 
 function showRegistration() {
   authView.classList.add("hidden");
   dashboardView.classList.add("hidden");
+  passwordResetView.classList.add("hidden");
   registrationView.classList.remove("hidden");
   registrationMessage.textContent = "";
 }
@@ -1106,7 +1131,8 @@ async function deleteRoomType(slug, trigger) {
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  formMessage.textContent = "";
+  formMessageText.textContent = "";
+  forgotPasswordLink.classList.add("hidden");
   const submitButton = loginForm.querySelector("button[type='submit']");
   submitButton.disabled = true;
 
@@ -1121,7 +1147,8 @@ loginForm.addEventListener("submit", async (event) => {
     });
     const result = await response.json();
     if (!response.ok) {
-      formMessage.textContent = result.message;
+      formMessageText.textContent = result.message;
+      forgotPasswordLink.classList.toggle("hidden", response.status !== 401);
       formMessage.classList.remove("success");
       return;
     }
@@ -1129,7 +1156,7 @@ loginForm.addEventListener("submit", async (event) => {
     formMessage.classList.remove("success");
     showDashboard(result.user);
   } catch {
-    formMessage.textContent = "Không thể kết nối máy chủ. Vui lòng thử lại.";
+    formMessageText.textContent = "Không thể kết nối máy chủ. Vui lòng thử lại.";
   } finally {
     submitButton.disabled = false;
   }
@@ -1714,5 +1741,70 @@ setInterval(() => {
 document.addEventListener("visibilitychange", () => {
   if (currentUser && !document.hidden && !dashboardView.classList.contains("hidden")) {
     loadRooms();
+  }
+});
+
+forgotPasswordLink.addEventListener("click", showPasswordReset);
+document.querySelector("#backToLogin").addEventListener("click", () => showLogin());
+
+passwordResetRequestForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  passwordResetRequestMessage.textContent = "";
+  if (!passwordResetRequestForm.reportValidity()) return;
+  const submitButton = passwordResetRequestForm.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  try {
+    const response = await fetch("/api/password-reset/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: document.querySelector("#resetEmail").value }),
+    });
+    const result = await response.json();
+    passwordResetRequestMessage.textContent = result.message;
+    if (response.ok) {
+      passwordResetRequestMessage.classList.add("success");
+      passwordResetCompleteForm.classList.remove("hidden");
+      passwordResetRequestForm.classList.add("hidden");
+      document.querySelector("#resetCode").focus();
+    } else {
+      passwordResetRequestMessage.classList.remove("success");
+    }
+  } catch {
+    passwordResetRequestMessage.textContent = "Không thể kết nối máy chủ. Vui lòng thử lại.";
+  } finally {
+    submitButton.disabled = false;
+  }
+});
+
+passwordResetCompleteForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  passwordResetCompleteMessage.textContent = "";
+  if (!passwordResetCompleteForm.reportValidity()) return;
+  const newPassword = document.querySelector("#resetNewPassword").value;
+  if (newPassword !== document.querySelector("#resetConfirmPassword").value) {
+    passwordResetCompleteMessage.textContent = "Mật khẩu xác nhận không khớp.";
+    return;
+  }
+  const submitButton = passwordResetCompleteForm.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  try {
+    const response = await fetch("/api/password-reset/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: document.querySelector("#resetEmail").value,
+        code: document.querySelector("#resetCode").value,
+        new_password: newPassword,
+      }),
+    });
+    const result = await response.json();
+    passwordResetCompleteMessage.textContent = result.message;
+    if (response.ok) {
+      showLogin(result.message);
+    }
+  } catch {
+    passwordResetCompleteMessage.textContent = "Không thể kết nối máy chủ. Vui lòng thử lại.";
+  } finally {
+    submitButton.disabled = false;
   }
 });
