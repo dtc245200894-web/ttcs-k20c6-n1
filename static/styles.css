@@ -162,9 +162,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .account-menu-trigger:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .hamburger-icon { display: block; width: 17px; height: 14px; background: linear-gradient(var(--forest), var(--forest)) 0 0 / 100% 2px no-repeat, linear-gradient(var(--forest), var(--forest)) 0 6px / 100% 2px no-repeat, linear-gradient(var(--forest), var(--forest)) 0 12px / 100% 2px no-repeat; }
 .account-menu-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 200px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: 0 12px 28px rgba(10, 25, 19, 0.16); }
-.profile-button, .logout-button { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; border-radius: 4px; color: #34453d; background: white; cursor: pointer; font-size: 12px; font-weight: 600; text-align: left; }
-.profile-button:hover, .logout-button:hover { background: #f3f6f2; }
-.profile-button span, .logout-button span { padding-left: 8px; color: var(--green); }
+.profile-button, .password-change-button, .logout-button { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; border-radius: 4px; color: #34453d; background: white; cursor: pointer; font-size: 12px; font-weight: 600; text-align: left; }
+.profile-button:hover, .password-change-button:hover, .logout-button:hover { background: #f3f6f2; }
+.profile-button span, .password-change-button span, .logout-button span { padding-left: 8px; color: var(--green); }
 .dashboard-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr) 330px; gap: 22px; align-items: start; }
 .page-shell.dashboard-mode .dashboard-shell { grid-template-columns: 230px minmax(0, 1fr); gap: 18px; }
 .page-shell.dashboard-mode .sidebar-panel, .page-shell.dashboard-mode .management-panel { border: none; border-radius: 0; background: transparent; box-shadow: none; }

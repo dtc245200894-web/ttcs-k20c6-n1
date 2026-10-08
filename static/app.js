@@ -9,6 +9,7 @@ const dashboardAvatarMenu = document.querySelector("#dashboardAvatarMenu");
 const dashboardAvatarButton = document.querySelector("#dashboardAvatarButton");
 const dashboardAvatarActions = document.querySelector("#dashboardAvatarActions");
 const logoutButton = document.querySelector("#logoutButton");
+const openPasswordChangeButton = document.querySelector("#openPasswordChangeButton");
 const profileModal = document.querySelector("#profileModal");
 const avatarViewModal = document.querySelector("#avatarViewModal");
 const rentalDetailsModal = document.querySelector("#rentalDetailsModal");
@@ -34,6 +35,7 @@ const profileAvatarPreview = document.querySelector("#profileAvatarPreview");
 const profileAvatarPlaceholder = document.querySelector("#profileAvatarPlaceholder");
 const saveProfileButton = document.querySelector("#saveProfileButton");
 let currentUser = null;
+let passwordResetMode = "forgot";
 let rentalDetailsRoomId = null;
 let transferTargetRoomId = null;
 const loginForm = document.querySelector("#loginForm");
@@ -341,14 +343,18 @@ function showLogin(message = "") {
   formMessage.classList.toggle("success", Boolean(message));
 }
 
-function showPasswordReset() {
+function showPasswordReset(mode = "forgot") {
+  passwordResetMode = mode;
   dashboardView.classList.add("hidden");
   authView.classList.add("hidden");
   registrationView.classList.add("hidden");
   passwordResetView.classList.remove("hidden");
   document.querySelector(".page-shell").classList.remove("dashboard-mode");
   document.body.classList.remove("dashboard-mode");
-  document.querySelector("#resetEmail").value = document.querySelector("#email").value.trim();
+  document.querySelector("#passwordResetTitle").textContent = mode === "change" ? "Đổi mật khẩu" : "Quên mật khẩu?";
+  document.querySelector("#resetEmail").value = mode === "change"
+    ? currentUser.email
+    : document.querySelector("#email").value.trim();
   passwordResetRequestMessage.textContent = "";
   passwordResetCompleteMessage.textContent = "";
   passwordResetCompleteForm.classList.add("hidden");
@@ -1460,6 +1466,11 @@ logoutButton.addEventListener("click", async () => {
   showLogin();
 });
 
+openPasswordChangeButton.addEventListener("click", () => {
+  closeAccountMenu();
+  showPasswordReset("change");
+});
+
 function renderProfileAvatar(avatarUrl) {
   if (avatarUrl) {
     profileAvatarPreview.src = avatarUrl;
@@ -1981,8 +1992,11 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-forgotPasswordLink.addEventListener("click", showPasswordReset);
-document.querySelector("#backToLogin").addEventListener("click", () => showLogin());
+forgotPasswordLink.addEventListener("click", () => showPasswordReset());
+document.querySelector("#backToLogin").addEventListener("click", () => {
+  if (passwordResetMode === "change" && currentUser) showDashboard(currentUser);
+  else showLogin();
+});
 
 passwordResetRequestForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -2037,7 +2051,12 @@ passwordResetCompleteForm.addEventListener("submit", async (event) => {
     const result = await response.json();
     passwordResetCompleteMessage.textContent = result.message;
     if (response.ok) {
-      showLogin(result.message);
+      if (passwordResetMode === "change" && currentUser) {
+        showDashboard(currentUser);
+        showSuccessToast(result.message);
+      } else {
+        showLogin(result.message);
+      }
     }
   } catch {
     passwordResetCompleteMessage.textContent = "Không thể kết nối máy chủ. Vui lòng thử lại.";
