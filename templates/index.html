@@ -44,7 +44,7 @@
       <section class="registration-view hidden" id="passwordResetView">
         <div class="form-heading">
           <p class="kicker">KHÔI PHỤC TÀI KHOẢN</p>
-          <h2>Quên mật khẩu?</h2>
+          <h2 id="passwordResetTitle">Quên mật khẩu?</h2>
           <p>Nhận mã xác minh qua email để tạo mật khẩu mới.</p>
         </div>
         <form id="passwordResetRequestForm" novalidate>
@@ -111,6 +111,7 @@
             </button>
             <div class="account-menu-dropdown hidden" id="accountMenuDropdown">
               <button class="profile-button" id="openProfileButton" type="button">Thông tin cá nhân <span aria-hidden="true">›</span></button>
+              <button class="password-change-button" id="openPasswordChangeButton" type="button">Đổi mật khẩu <span aria-hidden="true">›</span></button>
               <button class="logout-button" id="logoutButton" type="button" title="Đăng xuất">Đăng xuất <span aria-hidden="true">↗</span></button>
             </div>
           </div>
