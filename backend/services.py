@@ -448,13 +448,83 @@ class RoomService:
                     room["status"] = "cleaning"
                 elif room["status"] != "cleaning":
                     room["status"] = "available"
-            room["rentals"] = room_rentals
+            room["rentals"] = [
+                rental for rental in room_rentals if rental["ends_at"] > now_value
+            ]
             room["check_in"] = current_rental["starts_at"] if current_rental else None
             room["check_out"] = current_rental["ends_at"] if current_rental else None
             room["customer_name"] = current_rental["customer_name"] if current_rental else None
             room["customer_phone"] = current_rental["customer_phone"] if current_rental else None
             rooms.append(room)
         return rooms
+
+    def list_rental_history(self) -> list[dict[str, Any]]:
+        now_value = datetime.now().replace(second=0, microsecond=0).isoformat(timespec="minutes")
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT rentals.id, rentals.customer_name, rentals.customer_phone,
+                       rentals.customer_identity, rentals.starts_at, rentals.ends_at,
+                       rentals.nights, rentals.total_price, rooms.code AS room_code,
+                       rooms.name AS room_name
+                FROM rentals
+                JOIN rooms ON rooms.id = rentals.room_id
+                WHERE rentals.ends_at <= ?
+                ORDER BY rentals.ends_at DESC, rentals.id DESC
+                """,
+                (now_value,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def checkout_rental(self, rental_id: int) -> tuple[bool, str, dict[str, Any] | None]:
+        if isinstance(rental_id, bool) or not isinstance(rental_id, int) or rental_id < 1:
+            return False, "Lượt thuê không hợp lệ.", None
+
+        now_value = datetime.now().replace(second=0, microsecond=0).isoformat(timespec="minutes")
+        with self.database.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rental = connection.execute(
+                """
+                SELECT id, room_id, starts_at, ends_at
+                FROM rentals
+                WHERE id = ? AND status = 'active'
+                  AND starts_at <= ? AND ends_at > ?
+                """,
+                (rental_id, now_value, now_value),
+            ).fetchone()
+            if rental is None:
+                return False, "Chỉ có thể trả phòng cho lượt thuê đang diễn ra.", None
+
+            connection.execute(
+                "UPDATE rentals SET ends_at = ? WHERE id = ?",
+                (now_value, rental_id),
+            )
+
+        return True, "Đã trả phòng thành công.", {
+            "id": rental["id"],
+            "room_id": rental["room_id"],
+            "check_out": now_value,
+        }
+
+    def delete_upcoming_rental(self, rental_id: int) -> tuple[bool, str]:
+        if isinstance(rental_id, bool) or not isinstance(rental_id, int) or rental_id < 1:
+            return False, "Lượt thuê không hợp lệ."
+
+        now_value = datetime.now().replace(second=0, microsecond=0).isoformat(timespec="minutes")
+        with self.database.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rental = connection.execute(
+                """
+                SELECT id FROM rentals
+                WHERE id = ? AND status = 'active' AND starts_at > ?
+                """,
+                (rental_id, now_value),
+            ).fetchone()
+            if rental is None:
+                return False, "Chỉ có thể xóa lịch thuê sắp tới."
+            connection.execute("DELETE FROM rentals WHERE id = ?", (rental_id,))
+
+        return True, "Đã xóa lịch đặt trước."
 
     def rent_room(
         self,
@@ -505,16 +575,21 @@ class RoomService:
                 total_price = round(nights * room["price"], 2)
                 start_value = start.isoformat(timespec="minutes")
                 end_value = checkout.isoformat(timespec="minutes")
+                now_value = datetime.now().replace(second=0, microsecond=0).isoformat(
+                    timespec="minutes"
+                )
                 minimum_gap = timedelta(minutes=30)
                 overlapping_rental = connection.execute(
                     """
                     SELECT 1 FROM rentals
                     WHERE room_id = ? AND status = 'active'
+                      AND (ends_at > ? OR cleaning_released = 0)
                       AND starts_at < ? AND ends_at > ?
                     LIMIT 1
                     """,
                     (
                         room_id,
+                        now_value,
                         (checkout + minimum_gap).isoformat(timespec="minutes"),
                         (start - minimum_gap).isoformat(timespec="minutes"),
                     ),

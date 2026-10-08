@@ -256,6 +256,29 @@ def get_rooms():
     return jsonify({"ok": True, "rooms": room_service.list_rooms()})
 
 
+@app.get("/api/rentals/history")
+def get_rental_history():
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+    return jsonify({"ok": True, "rentals": room_service.list_rental_history()})
+
+
+@app.post("/api/rentals/<int:rental_id>/checkout")
+def checkout_rental(rental_id):
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+    ok, message, rental = room_service.checkout_rental(rental_id)
+    return jsonify({"ok": ok, "message": message, "rental": rental}), 200 if ok else 400
+
+
+@app.delete("/api/rentals/<int:rental_id>")
+def delete_upcoming_rental(rental_id):
+    if not session.get("user"):
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+    ok, message = room_service.delete_upcoming_rental(rental_id)
+    return jsonify({"ok": ok, "message": message}), 200 if ok else 400
+
+
 @app.post("/api/rentals")
 def create_rental():
     if not session.get("user"):
