@@ -13,6 +13,12 @@ const profileModal = document.querySelector("#profileModal");
 const avatarViewModal = document.querySelector("#avatarViewModal");
 const rentalDetailsModal = document.querySelector("#rentalDetailsModal");
 const rentalDetailsList = document.querySelector("#rentalDetailsList");
+const checkoutCurrentRentalButton = document.querySelector("#checkoutCurrentRental");
+const rentalCheckoutMessage = document.querySelector("#rentalCheckoutMessage");
+const checkoutConfirmModal = document.querySelector("#checkoutConfirmModal");
+const checkoutConfirmMessage = document.querySelector("#checkoutConfirmMessage");
+const cancelCheckoutButton = document.querySelector("#cancelCheckout");
+const confirmCheckoutButton = document.querySelector("#confirmCheckout");
 const rentalTransferPanel = document.querySelector("#rentalTransferPanel");
 const transferRoomSearch = document.querySelector("#transferRoomSearch");
 const transferRoomResults = document.querySelector("#transferRoomResults");
@@ -42,6 +48,9 @@ const passwordResetRequestMessage = document.querySelector("#passwordResetReques
 const passwordResetCompleteMessage = document.querySelector("#passwordResetCompleteMessage");
 const roomsGrid = document.querySelector("#roomsGrid");
 const overviewRoomsGrid = document.querySelector("#overviewRoomsGrid");
+const rentalHistorySearch = document.querySelector("#rentalHistorySearch");
+let rentalHistoryRentals = [];
+let rentalHistoryError = "";
 const roomForm = document.querySelector("#roomForm");
 const roomFormPanel = document.querySelector("#roomFormPanel");
 const roomFormModal = document.querySelector("#roomFormModal");
@@ -105,6 +114,7 @@ let currentFilter = "all";
 let selectedRoomType = null;
 let pendingDeleteRoomId = null;
 let pendingDeleteRoomTypeSlug = null;
+let pendingDeleteRentalId = null;
 let deleteTrigger = null;
 let pendingRoomTypeTransfer = null;
 
@@ -118,9 +128,11 @@ function setDashboardView(view) {
   const viewLabels = {
     rooms: "QUẢN LÝ PHÒNG",
     "room-types": "THỂ LOẠI PHÒNG",
+    history: "LỊCH SỬ",
   };
   document.querySelector(".dashboard-header .kicker").textContent = `LOTUS STAY / ${viewLabels[view] || "TRANG CHỦ"}`;
   fitRoomTypeResults();
+  if (view === "history") loadRentalHistory();
 }
 
 function fitRoomTypeResults() {
@@ -432,6 +444,7 @@ function openDeleteConfirmation(roomId, trigger) {
   confirmDeleteButton.classList.remove("hidden");
   pendingDeleteRoomId = room.id;
   pendingDeleteRoomTypeSlug = null;
+  pendingDeleteRentalId = null;
   deleteTrigger = trigger;
   deleteConfirmMessage.textContent = `Bạn có chắc chắn muốn xóa phòng ${room.code}?`;
   deleteConfirmMessage.classList.remove("error");
@@ -447,6 +460,7 @@ function openRoomTypeDeleteConfirmation(slug, name, trigger) {
   confirmDeleteButton.classList.remove("hidden");
   pendingDeleteRoomId = null;
   pendingDeleteRoomTypeSlug = slug;
+  pendingDeleteRentalId = null;
   deleteTrigger = trigger;
   deleteConfirmMessage.textContent = `Bạn có chắc chắn muốn xóa thể loại "${name}"?`;
   deleteConfirmMessage.classList.remove("error");
@@ -463,6 +477,7 @@ function showDeleteBlockedNotice(trigger, message = "Phòng này hiện tại kh
   confirmDeleteButton.classList.add("hidden");
   pendingDeleteRoomId = null;
   pendingDeleteRoomTypeSlug = null;
+  pendingDeleteRentalId = null;
   deleteTrigger = trigger;
   deleteConfirmModal.classList.remove("hidden");
   cancelDeleteButton.focus();
@@ -477,6 +492,7 @@ function showDeleteSuccessNotice() {
   confirmDeleteButton.classList.add("hidden");
   pendingDeleteRoomId = null;
   pendingDeleteRoomTypeSlug = null;
+  pendingDeleteRentalId = null;
   deleteTrigger = null;
   deleteConfirmModal.classList.remove("hidden");
   cancelDeleteButton.focus();
@@ -492,8 +508,25 @@ function closeDeleteConfirmation() {
   confirmDeleteButton.classList.remove("hidden");
   pendingDeleteRoomId = null;
   pendingDeleteRoomTypeSlug = null;
+  pendingDeleteRentalId = null;
   if (deleteTrigger?.isConnected) deleteTrigger.focus();
   deleteTrigger = null;
+}
+
+function openUpcomingRentalDeleteConfirmation(rentalId, roomCode, trigger) {
+  pendingDeleteRoomId = null;
+  pendingDeleteRoomTypeSlug = null;
+  pendingDeleteRentalId = rentalId;
+  deleteTrigger = trigger;
+  deleteConfirmTitle.textContent = "Xóa lịch đặt trước?";
+  deleteConfirmKicker.textContent = "XÁC NHẬN THAO TÁC";
+  deleteConfirmMessage.textContent = `Bạn có chắc chắn muốn xóa lịch đặt trước của phòng ${roomCode}?`;
+  deleteConfirmMessage.classList.remove("error");
+  cancelDeleteButton.textContent = "Hủy";
+  confirmDeleteButton.textContent = "Xóa lịch";
+  confirmDeleteButton.classList.remove("hidden");
+  deleteConfirmModal.classList.remove("hidden");
+  cancelDeleteButton.focus();
 }
 
 function countRoomsByStatus(rooms) {
@@ -542,12 +575,12 @@ function localDateTimeValue(date) {
 }
 
 function formatRentalTime(value) {
-  if (!value) return "--:--";
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) return "--:--";
   const [hour, minute] = value.split(":").map(Number);
   return new Intl.DateTimeFormat("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: true,
+    hourCycle: "h23",
   }).format(new Date(2000, 0, 1, hour, minute));
 }
 
@@ -560,11 +593,15 @@ function updateRentalDateConstraints() {
   const nowValue = localDateTimeValue(new Date());
   const today = nowValue.slice(0, 10);
   rentalStartDateInput.min = today;
-  if (rentalStartDateInput.value === today) {
-    rentalStartTimeInput.min = nowValue.slice(11, 16);
-  } else {
-    rentalStartTimeInput.removeAttribute("min");
-  }
+  const minimumTime = rentalStartDateInput.value === today
+    ? nowValue.slice(11, 16)
+    : "";
+  const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(rentalStartTimeInput.value);
+  rentalStartTimeInput.setCustomValidity(
+    minimumTime && validTime && rentalStartTimeInput.value < minimumTime
+      ? "Giờ thuê phòng không được trước thời gian hiện tại."
+      : "",
+  );
   rentalEndInput.min = rentalStartDateInput.value
     ? nextDateValue(`${rentalStartDateInput.value}T00:00`)
     : nextDateValue(`${today}T00:00`);
@@ -848,6 +885,81 @@ function formatRentalDetailsDateTime(value) {
   }).format(date);
 }
 
+function normalizeHistorySearchValue(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLocaleLowerCase("vi");
+}
+
+function renderRentalHistory() {
+  const rows = document.querySelector("#rentalHistoryRows");
+  const searchTerm = normalizeHistorySearchValue(rentalHistorySearch.value.trim());
+  if (rentalHistoryError) {
+    rows.innerHTML = `<tr><td class="history-empty is-error" colspan="8">${escapeHtml(rentalHistoryError)}</td></tr>`;
+    return;
+  }
+  if (!rentalHistoryRentals.length) {
+    rows.innerHTML = '<tr><td class="history-empty" colspan="8">Chưa có lượt thuê nào đã kết thúc.</td></tr>';
+    return;
+  }
+
+  const matches = rentalHistoryRentals.filter((rental) => {
+    const searchableValues = [
+      rental.room_code,
+      rental.room_name,
+      rental.customer_name,
+      rental.customer_phone,
+      rental.customer_identity,
+      formatRentalDetailsDateTime(rental.starts_at),
+      formatRentalDetailsDateTime(rental.ends_at),
+      rental.nights,
+      formatCurrency(rental.total_price),
+    ];
+    return normalizeHistorySearchValue(searchableValues.join(" ")).includes(searchTerm);
+  });
+  if (!matches.length) {
+    rows.innerHTML = '<tr><td class="history-empty" colspan="8">Không tìm thấy lượt thuê phù hợp.</td></tr>';
+    return;
+  }
+  rows.innerHTML = matches.map((rental) => `
+    <tr>
+      <td><strong>${escapeHtml(rental.room_code)}</strong><small>${escapeHtml(rental.room_name)}</small></td>
+      <td>${escapeHtml(rental.customer_name || "Chưa có thông tin")}</td>
+      <td>${escapeHtml(rental.customer_phone || "Chưa có thông tin")}</td>
+      <td>${escapeHtml(rental.customer_identity || "Chưa có thông tin")}</td>
+      <td>${escapeHtml(formatRentalDetailsDateTime(rental.starts_at))}</td>
+      <td>${escapeHtml(formatRentalDetailsDateTime(rental.ends_at))}</td>
+      <td>${escapeHtml(rental.nights)}</td>
+      <td><strong>${escapeHtml(formatCurrency(rental.total_price))}</strong></td>
+    </tr>
+  `).join("");
+}
+
+async function loadRentalHistory() {
+  const rows = document.querySelector("#rentalHistoryRows");
+  rentalHistoryError = "";
+  rows.innerHTML = '<tr><td class="history-empty" colspan="8">Đang tải lịch sử thuê phòng...</td></tr>';
+  try {
+    const response = await fetch("/api/rentals/history");
+    const result = await response.json();
+    if (!response.ok) {
+      rentalHistoryError = result.message || "Không thể tải lịch sử thuê phòng.";
+      rentalHistoryRentals = [];
+      renderRentalHistory();
+      return;
+    }
+    rentalHistoryRentals = result.rentals;
+    renderRentalHistory();
+  } catch {
+    rentalHistoryError = "Không thể kết nối máy chủ để tải lịch sử thuê phòng.";
+    rentalHistoryRentals = [];
+    renderRentalHistory();
+  }
+}
+
 function renderTransferRoomResults() {
   const searchTerm = transferRoomSearch.value.trim().toLowerCase();
   const showResults = searchTerm.length > 0 && transferTargetRoomId === null;
@@ -913,6 +1025,14 @@ function openRentalDetails(room) {
   document.querySelector("#rentalDetailsTitle").textContent = `Lịch thuê phòng ${room.code}`;
   const rentalsList = rentalDetailsList;
   const now = new Date();
+  const currentRental = (room.rentals || []).find((rental) => (
+    rental.status === "active"
+    && new Date(rental.starts_at) <= now
+    && now < new Date(rental.ends_at)
+  ));
+  checkoutCurrentRentalButton.dataset.rentalId = currentRental ? String(currentRental.id) : "";
+  checkoutCurrentRentalButton.disabled = !currentRental;
+  rentalCheckoutMessage.textContent = "";
   rentalsList.replaceChildren();
   (room.rentals || []).forEach((rental) => {
     const startsAt = new Date(rental.starts_at);
@@ -923,10 +1043,10 @@ function openRentalDetails(room) {
         ? "Sắp tới"
         : "Đã kết thúc";
     const upcomingAndActive = rental.status === "active" && startsAt > now;
-    const item = document.createElement("details");
+    const item = document.createElement("article");
     item.className = "rental-details-item";
     if (upcomingAndActive) item.classList.add("is-draggable");
-    const rentalToggle = document.createElement("summary");
+    const rentalToggle = document.createElement("div");
     rentalToggle.className = "rental-details-summary";
     if (upcomingAndActive) {
       rentalToggle.draggable = true;
@@ -953,8 +1073,29 @@ function openRentalDetails(room) {
       rentalTimes.append(time);
     });
     rentalToggle.append(statusLabel, rentalTimes);
+    const expandButton = document.createElement("button");
+    expandButton.className = "rental-details-toggle";
+    expandButton.type = "button";
+    expandButton.textContent = "＋";
+    expandButton.setAttribute("aria-label", "Xem chi tiết lịch thuê");
+    expandButton.setAttribute("aria-expanded", "false");
+    expandButton.setAttribute("aria-controls", `rentalDetailsContent-${rental.id}`);
+    expandButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const isExpanded = item.classList.toggle("is-expanded");
+      details.hidden = !isExpanded;
+      expandButton.textContent = isExpanded ? "−" : "＋";
+      expandButton.setAttribute("aria-expanded", String(isExpanded));
+      expandButton.setAttribute(
+        "aria-label",
+        isExpanded ? "Thu gọn chi tiết lịch thuê" : "Xem chi tiết lịch thuê",
+      );
+    });
     const details = document.createElement("dl");
     details.className = "rental-details-expanded";
+    details.id = `rentalDetailsContent-${rental.id}`;
+    details.hidden = true;
     [
       ["Tên khách", rental.customer_name || "Chưa có thông tin"],
       ["Số điện thoại", rental.customer_phone || "Chưa có thông tin"],
@@ -970,7 +1111,22 @@ function openRentalDetails(room) {
       row.append(term, description);
       details.append(row);
     });
-    item.append(rentalToggle, details);
+    item.append(rentalToggle, expandButton);
+    if (upcomingAndActive) {
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "rental-delete-button";
+      deleteButton.type = "button";
+      deleteButton.textContent = "−";
+      deleteButton.setAttribute("aria-label", `Xóa lịch đặt trước phòng ${room.code}`);
+      deleteButton.title = "Xóa lịch đặt trước";
+      deleteButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openUpcomingRentalDeleteConfirmation(rental.id, room.code, deleteButton);
+      });
+      item.append(deleteButton);
+    }
+    item.append(details);
     rentalsList.append(item);
   });
   if (!rentalsList.childElementCount) {
@@ -1025,6 +1181,46 @@ async function transferUpcomingRental(rentalId) {
     rentalTransferMessage.textContent = "Không thể kết nối máy chủ. Lịch vẫn ở phòng cũ.";
     rentalTransferMessage.classList.add("is-error");
   }
+}
+
+async function checkoutCurrentRental() {
+  const rentalId = Number(checkoutCurrentRentalButton.dataset.rentalId);
+  if (!Number.isInteger(rentalId) || rentalId < 1) return;
+
+  checkoutCurrentRentalButton.disabled = true;
+  rentalCheckoutMessage.textContent = "";
+  try {
+    const response = await fetch(`/api/rentals/${rentalId}/checkout`, { method: "POST" });
+    const result = await response.json();
+    if (!response.ok) {
+      rentalCheckoutMessage.textContent = result.message || "Không thể trả phòng.";
+      checkoutCurrentRentalButton.disabled = false;
+      return;
+    }
+
+    await loadRooms();
+    const updatedRoom = (window.__roomList || []).find(
+      (room) => room.id === rentalDetailsRoomId,
+    );
+    if (updatedRoom) openRentalDetails(updatedRoom);
+    showSuccessToast(result.message);
+  } catch {
+    rentalCheckoutMessage.textContent = "Không thể kết nối máy chủ. Chưa thể trả phòng.";
+    checkoutCurrentRentalButton.disabled = false;
+  }
+}
+
+function openCheckoutConfirmation() {
+  const room = (window.__roomList || []).find((item) => item.id === rentalDetailsRoomId);
+  if (!room || !checkoutCurrentRentalButton.dataset.rentalId) return;
+  checkoutConfirmMessage.textContent = `Bạn có chắc chắn muốn trả phòng ${room.code} không?`;
+  checkoutConfirmModal.classList.remove("hidden");
+  cancelCheckoutButton.focus();
+}
+
+function closeCheckoutConfirmation() {
+  checkoutConfirmModal.classList.add("hidden");
+  checkoutCurrentRentalButton.focus();
 }
 
 async function loadRooms() {
@@ -1104,6 +1300,29 @@ async function deleteRoom(roomId) {
     showDeleteSuccessNotice();
   } catch {
     deleteConfirmMessage.textContent = "Không thể xóa phòng. Vui lòng thử lại.";
+    deleteConfirmMessage.classList.add("error");
+  }
+}
+
+async function deleteUpcomingRental(rentalId) {
+  try {
+    const response = await fetch(`/api/rentals/${rentalId}`, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok) {
+      deleteConfirmMessage.textContent = result.message || "Không thể xóa lịch thuê.";
+      deleteConfirmMessage.classList.add("error");
+      return;
+    }
+
+    closeDeleteConfirmation();
+    await loadRooms();
+    const updatedRoom = (window.__roomList || []).find(
+      (room) => room.id === rentalDetailsRoomId,
+    );
+    if (updatedRoom) openRentalDetails(updatedRoom);
+    showSuccessToast(result.message);
+  } catch {
+    deleteConfirmMessage.textContent = "Không thể kết nối máy chủ. Lịch thuê chưa được xóa.";
     deleteConfirmMessage.classList.add("error");
   }
 }
@@ -1352,6 +1571,12 @@ overviewRoomsGrid.addEventListener("keydown", (event) => {
   if (room?.rentals?.length) openRentalDetails(room);
 });
 document.querySelector("#closeRentalDetails").addEventListener("click", closeRentalDetails);
+checkoutCurrentRentalButton.addEventListener("click", openCheckoutConfirmation);
+cancelCheckoutButton.addEventListener("click", closeCheckoutConfirmation);
+confirmCheckoutButton.addEventListener("click", () => {
+  checkoutConfirmModal.classList.add("hidden");
+  checkoutCurrentRental();
+});
 document.querySelector("#toggleRentalTransfer").addEventListener("click", (event) => {
   const isOpening = rentalTransferPanel.classList.contains("hidden");
   rentalTransferPanel.classList.toggle("hidden", !isOpening);
@@ -1368,7 +1593,7 @@ transferRoomSearch.addEventListener("input", () => {
   renderTransferRoomResults();
 });
 rentalDetailsList.addEventListener("dragstart", (event) => {
-  const rentalSummary = event.target.closest("summary[data-rental-id]");
+  const rentalSummary = event.target.closest(".rental-details-summary[data-rental-id]");
   if (!rentalSummary) return;
   event.dataTransfer.setData("text/plain", rentalSummary.dataset.rentalId);
   event.dataTransfer.effectAllowed = "move";
@@ -1498,12 +1723,18 @@ rentalRoomResults.addEventListener("keydown", (event) => {
     rentalRoomInput.focus();
   }
 });
+rentalHistorySearch.addEventListener("input", renderRentalHistory);
 rentalEndInput.addEventListener("input", updateRentalSummary);
 rentalStartDateInput.addEventListener("input", () => {
-  updateRentalDateConstraints();
-  if (rentalStartTimeInput.min && rentalStartTimeInput.value < rentalStartTimeInput.min) {
-    rentalStartTimeInput.value = rentalStartTimeInput.min;
+  const nowValue = localDateTimeValue(new Date());
+  if (
+    rentalStartDateInput.value === nowValue.slice(0, 10)
+    && /^\d{2}:\d{2}$/.test(rentalStartTimeInput.value)
+    && rentalStartTimeInput.value < nowValue.slice(11, 16)
+  ) {
+    rentalStartTimeInput.value = nowValue.slice(11, 16);
   }
+  updateRentalDateConstraints();
   if (rentalEndInput.value && rentalEndInput.value < rentalEndInput.min) {
     rentalEndInput.value = rentalEndInput.min;
   }
@@ -1519,7 +1750,7 @@ rentalForm.addEventListener("submit", saveRental);
 document.querySelector("#cancelRoomForm").addEventListener("click", resetRoomForm);
 document.querySelectorAll(".nav-button[data-view]").forEach((button) => {
   button.addEventListener("click", () => {
-    if (["overview", "rooms", "room-types"].includes(button.dataset.view)) {
+    if (["overview", "rooms", "room-types", "history"].includes(button.dataset.view)) {
       setDashboardView(button.dataset.view);
     }
   });
@@ -1683,6 +1914,12 @@ window.addEventListener("resize", fitRoomTypeResults);
 roomForm.addEventListener("submit", saveRoom);
 cancelDeleteButton.addEventListener("click", closeDeleteConfirmation);
 confirmDeleteButton.addEventListener("click", async () => {
+  if (pendingDeleteRentalId !== null) {
+    confirmDeleteButton.disabled = true;
+    await deleteUpcomingRental(pendingDeleteRentalId);
+    confirmDeleteButton.disabled = false;
+    return;
+  }
   if (pendingDeleteRoomTypeSlug !== null) {
     confirmDeleteButton.disabled = true;
     await deleteRoomType(pendingDeleteRoomTypeSlug, deleteTrigger);

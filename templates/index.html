@@ -123,6 +123,7 @@
               <button type="button" class="nav-button active" data-view="overview">Trang chủ</button>
               <button type="button" class="nav-button" data-view="rooms">Quản lý phòng</button>
               <button type="button" class="nav-button" data-view="room-types">Thể loại phòng</button>
+              <button type="button" class="nav-button" data-view="history">Lịch sử</button>
             </div>
             <div class="sidebar-section account-box">
               <p class="sidebar-label">TÀI KHOẢN</p>
@@ -206,6 +207,37 @@
                   <h4 id="typeRoomsTitle">Phòng theo thể loại</h4>
                   <div class="type-rooms-grid" id="typeRoomsGrid" aria-live="polite"></div>
                 </section>
+              </div>
+            </section>
+
+            <section class="dashboard-section" data-dashboard-view="history">
+              <div class="history-section">
+                <div class="history-heading">
+                  <div>
+                    <p class="kicker">LỊCH SỬ THUÊ PHÒNG</p>
+                    <h3>Các lượt thuê đã kết thúc</h3>
+                  </div>
+                </div>
+                <input class="history-search" id="rentalHistorySearch" type="search" placeholder="Tìm theo phòng, khách, số điện thoại, CCCD..." aria-label="Tìm kiếm lịch sử thuê phòng" autocomplete="off">
+                <div class="history-table-wrap">
+                  <table class="history-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Phòng</th>
+                        <th scope="col">Khách thuê</th>
+                        <th scope="col">Số điện thoại</th>
+                        <th scope="col">CCCD</th>
+                        <th scope="col">Ngày giờ thuê</th>
+                        <th scope="col">Ngày giờ trả</th>
+                        <th scope="col">Số đêm</th>
+                        <th scope="col">Tổng tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rentalHistoryRows" aria-live="polite">
+                      <tr><td class="history-empty" colspan="8">Chọn mục Lịch sử để tải dữ liệu.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </section>
           </section>
@@ -295,7 +327,7 @@
                   </div>
                   <div>
                     <label for="rentalStartTime">Giờ bắt đầu thuê</label>
-                    <input id="rentalStartTime" type="time" required>
+                    <input id="rentalStartTime" type="text" inputmode="numeric" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" maxlength="5" placeholder="HH:MM" autocomplete="off" required>
                   </div>
                 </div>
                 <div class="field-row two-col">
@@ -444,10 +476,14 @@
               <h3 id="rentalDetailsTitle">Lịch thuê phòng</h3>
               <div class="rental-details-actions">
                 <button class="secondary-button" id="toggleRentalTransfer" type="button" aria-expanded="false" aria-controls="rentalTransferPanel">Chuyển đổi</button>
-                <button class="secondary-button" id="closeRentalDetails" type="button">Đóng</button>
+                <button class="primary-button" id="checkoutCurrentRental" type="button" disabled>Trả phòng</button>
               </div>
             </div>
             <div class="rental-details-list" id="rentalDetailsList"></div>
+            <p class="rental-checkout-message" id="rentalCheckoutMessage" role="status" aria-live="polite"></p>
+            <div class="rental-details-footer">
+              <button class="secondary-button" id="closeRentalDetails" type="button">Đóng</button>
+            </div>
           </section>
           <aside class="rental-transfer-panel hidden" id="rentalTransferPanel" aria-label="Chuyển lịch thuê">
             <h3>Chuyển lịch thuê</h3>
@@ -468,6 +504,17 @@
   <div class="success-toast hidden" id="successToast" role="status" aria-live="polite">
     <span class="success-toast-icon" aria-hidden="true">✓</span>
     <span id="successToastMessage"></span>
+  </div>
+  <div class="confirm-modal hidden" id="checkoutConfirmModal">
+    <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="checkoutConfirmTitle">
+      <p class="kicker">XÁC NHẬN THAO TÁC</p>
+      <h3 id="checkoutConfirmTitle">Xác nhận trả phòng?</h3>
+      <p class="confirm-message" id="checkoutConfirmMessage"></p>
+      <div class="confirm-actions">
+        <button class="secondary-button" id="cancelCheckout" type="button">Hủy</button>
+        <button class="primary-button" id="confirmCheckout" type="button">Xác nhận trả phòng</button>
+      </div>
+    </section>
   </div>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
