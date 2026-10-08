@@ -235,10 +235,10 @@ function renderMoveRoomChoices() {
 
   list.innerHTML = rooms.map((room) => `
     <label class="move-room-type-room-option">
-      <input type="checkbox" name="room_ids" value="${escapeHtml(room.id)}">
+      <input type="checkbox" name="room_ids" value="${escapeHtml(room.id)}"${room.check_in ? ' disabled title="Không thể đổi thể loại khi phòng đang có người thuê."' : ""}>
       <span>
         <strong>${escapeHtml(room.name)}</strong>
-        <small>${escapeHtml(room.code)} · Tầng ${escapeHtml(room.floor)}</small>
+        <small>${escapeHtml(room.code)} · Tầng ${escapeHtml(room.floor)}${room.check_in ? " · Đang có người thuê" : ""}</small>
       </span>
     </label>
   `).join("");
@@ -389,6 +389,8 @@ function resetRoomForm() {
 }
 
 function openRoomForm(room = null) {
+  if (room?.check_in) return;
+
   roomFormModal.classList.remove("hidden");
   roomFormPanel.classList.add("is-open");
   const roomStatus = document.querySelector("#roomStatus");
@@ -474,8 +476,8 @@ function openRoomTypeDeleteConfirmation(slug, name, trigger) {
   cancelDeleteButton.focus();
 }
 
-function showDeleteBlockedNotice(trigger, message = "Phòng này hiện tại không thể xóa.") {
-  deleteConfirmTitle.textContent = "Không thể xóa";
+function showBlockedNotice(trigger, message, title = "Không thể xóa") {
+  deleteConfirmTitle.textContent = title;
   deleteConfirmKicker.textContent = "THÔNG BÁO";
   deleteConfirmMessage.textContent = message;
   deleteConfirmMessage.classList.add("error");
@@ -816,7 +818,7 @@ function renderRooms() {
         <strong>${formatCurrency(room.price)}</strong>
       </div>
       <div class="room-actions">
-        <button class="mini-button" type="button" data-action="edit" data-room-id="${room.id}">Cập nhật</button>
+        <button class="mini-button" type="button" data-action="edit" data-room-id="${room.id}"${room.check_in ? ' title="Không thể cập nhật khi phòng đang có người thuê."' : ""}>Cập nhật</button>
         <button class="mini-button danger" type="button" data-action="delete" data-room-id="${room.id}">Xóa</button>
       </div>
     </article>
@@ -1339,7 +1341,7 @@ async function deleteRoomType(slug, trigger) {
     const response = await fetch(`/api/room-types/${encodeURIComponent(slug)}`, { method: "DELETE" });
     const result = await response.json();
     if (!response.ok) {
-      showDeleteBlockedNotice(trigger, result.message || "Không thể xóa thể loại phòng này.");
+      showBlockedNotice(trigger, result.message || "Không thể xóa thể loại phòng này.");
       return;
     }
 
@@ -1348,7 +1350,7 @@ async function deleteRoomType(slug, trigger) {
     closeDeleteConfirmation();
     showSuccessToast(result.message);
   } catch {
-    showDeleteBlockedNotice(trigger, "Không thể xóa thể loại phòng này. Vui lòng thử lại.");
+    showBlockedNotice(trigger, "Không thể xóa thể loại phòng này. Vui lòng thử lại.");
   } finally {
     if (trigger?.isConnected) trigger.disabled = false;
   }
@@ -1950,6 +1952,10 @@ roomsGrid.addEventListener("click", async (event) => {
   const { action, roomId } = button.dataset;
   if (action === "edit") {
     const room = (window.__roomList || []).find((item) => String(item.id) === String(roomId));
+    if (room?.check_in) {
+      showBlockedNotice(button, "Phòng đang có người thuê không thể cập nhật.", "Không thể cập nhật");
+      return;
+    }
     openRoomForm(room);
     return;
   }
@@ -1957,7 +1963,7 @@ roomsGrid.addEventListener("click", async (event) => {
   if (action === "delete") {
     const room = (window.__roomList || []).find((item) => String(item.id) === String(roomId));
     if (room && room.status !== "available") {
-      showDeleteBlockedNotice(button);
+      showBlockedNotice(button, "Phòng này hiện tại không thể xóa.");
       return;
     }
     if (room?.status === "available") openDeleteConfirmation(roomId, button);
