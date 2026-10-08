@@ -369,7 +369,9 @@ class RoomService:
             return False, "Danh sách phòng cần chuyển không hợp lệ.", 0
         room_ids = list(dict.fromkeys(room_ids))
 
+        now_value = datetime.now().replace(second=0, microsecond=0).isoformat(timespec="minutes")
         with self.database.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             room_types = connection.execute(
                 "SELECT slug FROM room_types WHERE slug IN (?, ?)",
                 (source_slug, target_slug),
@@ -384,6 +386,18 @@ class RoomService:
             ).fetchone()[0]
             if matching_rooms != len(room_ids):
                 return False, "Một số phòng đã chọn không còn thuộc thể loại hiện tại.", 0
+
+            occupied_room = connection.execute(
+                f"""
+                SELECT 1 FROM rentals
+                WHERE room_id IN ({placeholders}) AND status = 'active'
+                  AND starts_at <= ? AND ends_at > ?
+                LIMIT 1
+                """,
+                (*room_ids, now_value, now_value),
+            ).fetchone()
+            if occupied_room is not None:
+                return False, "Không thể cập nhật thể loại khi phòng đang có người thuê.", 0
 
             updated = connection.execute(
                 f"UPDATE rooms SET room_type = ?, updated_at = CURRENT_TIMESTAMP WHERE room_type = ? AND id IN ({placeholders})",
@@ -773,6 +787,9 @@ class RoomService:
                     """,
                     (room_id, now_value, now_value),
                 ).fetchone()
+                if current_rental is not None:
+                    return False, "Không thể cập nhật phòng khi đang có người thuê.", None
+
                 requested_status = str(
                     payload.get("status", current_room["status"])
                 ).strip().lower()
