@@ -10,6 +10,9 @@ const dashboardAvatarButton = document.querySelector("#dashboardAvatarButton");
 const dashboardAvatarActions = document.querySelector("#dashboardAvatarActions");
 const logoutButton = document.querySelector("#logoutButton");
 const openPasswordChangeButton = document.querySelector("#openPasswordChangeButton");
+const passwordChangeModal = document.querySelector("#passwordChangeModal");
+const passwordChangeForm = document.querySelector("#passwordChangeForm");
+const passwordChangeMessage = document.querySelector("#passwordChangeMessage");
 const profileModal = document.querySelector("#profileModal");
 const avatarViewModal = document.querySelector("#avatarViewModal");
 const rentalDetailsModal = document.querySelector("#rentalDetailsModal");
@@ -1473,6 +1476,9 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !avatarViewModal.classList.contains("hidden")) {
     closeAvatarView();
   }
+  if (event.key === "Escape" && !passwordChangeModal.classList.contains("hidden")) {
+    closePasswordChange();
+  }
   if (event.key === "Escape" && !rentalDetailsModal.classList.contains("hidden")) {
     closeRentalDetails();
   }
@@ -1486,7 +1492,59 @@ logoutButton.addEventListener("click", async () => {
 
 openPasswordChangeButton.addEventListener("click", () => {
   closeAccountMenu();
-  showPasswordReset("change");
+  passwordChangeForm.reset();
+  passwordChangeMessage.textContent = "";
+  passwordChangeModal.classList.remove("hidden");
+  document.querySelector("#currentPassword").focus();
+});
+
+function closePasswordChange() {
+  passwordChangeModal.classList.add("hidden");
+  passwordChangeForm.reset();
+  passwordChangeMessage.textContent = "";
+  openPasswordChangeButton.focus();
+}
+
+document.querySelector("#cancelPasswordChange").addEventListener("click", closePasswordChange);
+passwordChangeModal.addEventListener("click", (event) => {
+  if (event.target === passwordChangeModal) closePasswordChange();
+});
+
+passwordChangeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  passwordChangeMessage.textContent = "";
+  if (!passwordChangeForm.reportValidity()) return;
+
+  const newPassword = document.querySelector("#newPassword").value;
+  if (newPassword !== document.querySelector("#confirmNewPassword").value) {
+    passwordChangeMessage.textContent = "Mật khẩu xác nhận không khớp.";
+    return;
+  }
+
+  const submitButton = passwordChangeForm.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  try {
+    const response = await fetch("/api/password/change", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        current_password: document.querySelector("#currentPassword").value,
+        new_password: newPassword,
+        confirm_password: document.querySelector("#confirmNewPassword").value,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      passwordChangeMessage.textContent = result.message || "Không thể đổi mật khẩu.";
+      return;
+    }
+    closePasswordChange();
+    showSuccessToast(result.message);
+  } catch {
+    passwordChangeMessage.textContent = "Không thể kết nối máy chủ. Vui lòng thử lại.";
+  } finally {
+    submitButton.disabled = false;
+  }
 });
 
 function renderProfileAvatar(avatarUrl) {
