@@ -181,6 +181,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .success-toast { position: fixed; z-index: 1200; top: 24px; right: 24px; display: flex; align-items: center; gap: 12px; width: min(360px, calc(100vw - 32px)); min-height: 64px; padding: 14px 18px; border: 1px solid #b8e4c9; border-radius: 8px; color: var(--forest); background: #fff; box-shadow: 0 12px 36px rgba(10, 25, 19, 0.18); font-size: 14px; font-weight: 600; animation: toast-in 180ms ease-out both; }
 .success-toast-icon { display: grid; flex: 0 0 28px; width: 28px; aspect-ratio: 1; place-items: center; border-radius: 50%; color: #fff; background: #42875e; font-size: 16px; }
 .confirm-dialog { width: min(420px, 100%); padding: 26px; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: 0 24px 70px rgba(10, 25, 19, 0.22); }
+.password-change-dialog { width: min(460px, 100%); }
+.password-change-dialog > .kicker { color: var(--green); }
+.password-change-dialog h3 { margin: 0; font-size: 22px; }
+.password-change-form { margin-top: 20px; }
+.password-change-form input { margin-bottom: 16px; }
+.password-change-form .form-message { margin-top: -4px; }
 .confirm-dialog .kicker { color: var(--green); }
 .confirm-dialog h3 { margin: 0; font-size: 22px; }
 .confirm-message { margin: 12px 0 24px; color: #46534c; font-size: 14px; line-height: 1.5; }

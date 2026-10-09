@@ -460,6 +460,25 @@
           </form>
         </aside>
       </div>
+      <div class="confirm-modal hidden" id="passwordChangeModal">
+        <section class="confirm-dialog password-change-dialog" role="dialog" aria-modal="true" aria-labelledby="passwordChangeTitle">
+          <p class="kicker">TÀI KHOẢN</p>
+          <h3 id="passwordChangeTitle">Đổi mật khẩu</h3>
+          <form class="password-change-form" id="passwordChangeForm" novalidate>
+            <label for="currentPassword">Mật khẩu hiện tại</label>
+            <input id="currentPassword" name="current_password" type="password" autocomplete="current-password" required>
+            <label for="newPassword">Mật khẩu mới</label>
+            <input id="newPassword" name="new_password" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Từ 8 đến 128 ký tự" required>
+            <label for="confirmNewPassword">Xác nhận mật khẩu mới</label>
+            <input id="confirmNewPassword" name="confirm_password" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Nhập lại mật khẩu mới" required>
+            <p class="form-message" id="passwordChangeMessage" role="alert" aria-live="polite"></p>
+            <div class="form-actions">
+              <button class="secondary-button" id="cancelPasswordChange" type="button">Hủy</button>
+              <button class="primary-button" type="submit">Đổi mật khẩu</button>
+            </div>
+          </form>
+        </section>
+      </div>
       <div class="room-modal hidden" id="avatarViewModal">
         <section class="avatar-viewer" role="dialog" aria-modal="true" aria-labelledby="avatarViewTitle">
           <div class="avatar-viewer-header">

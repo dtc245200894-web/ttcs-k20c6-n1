@@ -140,6 +140,38 @@ class AuthService:
             )
         return True, "Đổi mật khẩu thành công. Bạn có thể đăng nhập."
 
+    def change_password(
+        self,
+        user_id: int,
+        current_password: str,
+        new_password: str,
+        confirm_password: str,
+    ) -> tuple[bool, str]:
+        if not all(
+            isinstance(value, str)
+            for value in (current_password, new_password, confirm_password)
+        ):
+            return False, "Thông tin đổi mật khẩu không hợp lệ."
+        if len(new_password) < 8 or len(new_password) > 128:
+            return False, "Mật khẩu cần có từ 8 đến 128 ký tự."
+        if new_password != confirm_password:
+            return False, "Mật khẩu xác nhận không khớp."
+
+        with self.database.connect() as connection:
+            user = connection.execute(
+                "SELECT password_hash FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+            if user is None:
+                return False, "Không tìm thấy tài khoản."
+            if not check_password_hash(user["password_hash"], current_password):
+                return False, "Mật khẩu hiện tại không chính xác."
+
+            connection.execute(
+                "UPDATE users SET password_hash = ? WHERE id = ?",
+                (generate_password_hash(new_password), user_id),
+            )
+        return True, "Đổi mật khẩu thành công."
+
     def get_profile(self, user_id: int) -> dict[str, Any] | None:
         with self.database.connect() as connection:
             user = connection.execute(

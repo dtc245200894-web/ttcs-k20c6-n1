@@ -150,6 +150,24 @@ def complete_password_reset():
     return jsonify({"ok": ok, "message": message}), 200 if ok else 400
 
 
+@app.post("/api/password/change")
+def change_password():
+    user = session.get("user")
+    if not user:
+        return jsonify({"ok": False, "message": "Vui lòng đăng nhập."}), 401
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        payload = {}
+    ok, message = auth_service.change_password(
+        user["id"],
+        payload.get("current_password", ""),
+        payload.get("new_password", ""),
+        payload.get("confirm_password", ""),
+    )
+    return jsonify({"ok": ok, "message": message}), 200 if ok else 400
+
+
 @app.post("/api/register")
 def register():
     payload = request.get_json(silent=True) or {}

@@ -6,6 +6,7 @@
 
 - Đăng nhập bằng email và mật khẩu.
 - Báo lỗi khi email hoặc mật khẩu không đúng.
+- Đổi mật khẩu trong menu tài khoản sau khi xác nhận mật khẩu hiện tại.
 - Khôi phục mật khẩu bằng mã xác minh gửi qua email.
 - Duy trì trạng thái đăng nhập bằng session; tải lại trang không làm mất phiên.
 - Đăng xuất và xóa session.
