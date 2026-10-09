@@ -171,8 +171,8 @@ class AuthService:
             return None, "Vui lòng nhập ngày sinh hợp lệ."
         if parsed_birth_date > date.today():
             return None, "Ngày sinh không được ở tương lai."
-        if not re.fullmatch(r"[0-9]{10}", phone):
-            return None, "Số điện thoại phải gồm đúng 10 chữ số."
+        if not re.fullmatch(r"(?:09[0-9]{8}|034[0-9]{7})", phone):
+            return None, "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 09 hoặc 034."
         return {
             "full_name": full_name,
             "date_of_birth": date_of_birth,
@@ -553,10 +553,10 @@ class RoomService:
             return False, "Phòng được chọn không hợp lệ.", None
         if not isinstance(customer_name, str) or not customer_name.strip() or len(customer_name.strip()) > 120:
             return False, "Vui lòng nhập tên khách hợp lệ.", None
-        if not isinstance(customer_phone, str) or not re.fullmatch(r"\d{10}", customer_phone.strip()):
-            return False, "Số điện thoại khách phải gồm đúng 10 chữ số.", None
-        if not isinstance(customer_identity, str) or not re.fullmatch(r"\d{12}", customer_identity.strip()):
-            return False, "Số CCCD khách phải gồm đúng 12 chữ số.", None
+        if not isinstance(customer_phone, str) or not re.fullmatch(r"(?:09\d{8}|034\d{7})", customer_phone.strip()):
+            return False, "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 09 hoặc 034.", None
+        if not isinstance(customer_identity, str) or not re.fullmatch(r"0\d{11}", customer_identity.strip()):
+            return False, "Số CCCD phải gồm 12 chữ số và bắt đầu bằng 0.", None
         if not isinstance(starts_at, str) or not isinstance(ends_at, str):
             return False, "Vui lòng chọn thời gian trả phòng hợp lệ.", None
         try:

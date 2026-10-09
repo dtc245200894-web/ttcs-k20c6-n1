@@ -309,9 +309,9 @@
                 <label for="rentalCustomerName">Tên khách</label>
                 <input id="rentalCustomerName" name="customer_name" type="text" autocomplete="name" maxlength="120" placeholder="Nhập tên khách" required>
                 <label for="rentalCustomerPhone">Số điện thoại</label>
-                <input id="rentalCustomerPhone" name="customer_phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="[0-9]{10}" maxlength="10" placeholder="Nhập số điện thoại 10 chữ số" required>
+                <input id="rentalCustomerPhone" name="customer_phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="(09[0-9]{8}|034[0-9]{7})" maxlength="10" placeholder="Nhập số điện thoại bắt đầu bằng 09 hoặc 034" required>
                 <label for="rentalCustomerIdentity">CCCD</label>
-                <input id="rentalCustomerIdentity" name="customer_identity" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]{12}" maxlength="12" placeholder="Nhập số CCCD 12 chữ số" required>
+                <input id="rentalCustomerIdentity" name="customer_identity" type="text" inputmode="numeric" autocomplete="off" pattern="0[0-9]{11}" maxlength="12" placeholder="Nhập CCCD 12 chữ số, bắt đầu bằng 0" required>
                 <label for="rentalRoom">Tìm phòng</label>
                 <div class="rental-room-search">
                   <input id="rentalRoom" type="search" placeholder="Nhập mã phòng để tìm" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rentalRoomResults" required>
@@ -448,7 +448,7 @@
             <input id="profileEmail" name="email" type="email" autocomplete="email" readonly aria-describedby="profileEmailNote">
             <small class="profile-email-note" id="profileEmailNote">Email không thể chỉnh sửa.</small>
             <label for="profilePhone">Số điện thoại</label>
-            <input id="profilePhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="[0-9]{10}" required>
+            <input id="profilePhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="(09[0-9]{8}|034[0-9]{7})" maxlength="10" placeholder="Bắt đầu bằng 09 hoặc 034" required>
             <label for="profileAvatar">Ảnh đại diện</label>
             <input class="room-image-input" id="profileAvatar" name="avatar" type="file" accept=".jpg,.jpeg,.png,.webp" required>
             <p class="room-image-name">Tối đa 5 MB; định dạng JPG, PNG hoặc WebP.</p>

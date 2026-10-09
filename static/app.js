@@ -30,6 +30,7 @@ const avatarViewImage = document.querySelector("#avatarViewImage");
 const avatarViewPlaceholder = document.querySelector("#avatarViewPlaceholder");
 const profileForm = document.querySelector("#profileForm");
 const profileFormMessage = document.querySelector("#profileFormMessage");
+const profilePhoneInput = document.querySelector("#profilePhone");
 const profileAvatarInput = document.querySelector("#profileAvatar");
 const profileAvatarPreview = document.querySelector("#profileAvatarPreview");
 const profileAvatarPlaceholder = document.querySelector("#profileAvatarPlaceholder");
@@ -58,8 +59,10 @@ const roomFormPanel = document.querySelector("#roomFormPanel");
 const roomFormModal = document.querySelector("#roomFormModal");
 const rentalFormModal = document.querySelector("#rentalFormModal");
 const rentalForm = document.querySelector("#rentalForm");
+const rentalFormPanel = rentalFormModal.querySelector(".form-panel");
 const rentalCustomerName = document.querySelector("#rentalCustomerName");
 const rentalCustomerPhone = document.querySelector("#rentalCustomerPhone");
+const rentalCustomerIdentity = document.querySelector("#rentalCustomerIdentity");
 const rentalRoomInput = document.querySelector("#rentalRoom");
 const rentalRoomIdInput = document.querySelector("#rentalRoomId");
 const rentalRoomResults = document.querySelector("#rentalRoomResults");
@@ -726,8 +729,9 @@ function openRentalForm() {
   rentalCheckoutTime.textContent = formatRentalTime(rentalStartTimeInput.value);
   rentalFormMessage.textContent = "";
   rentalFormModal.classList.remove("hidden");
+  rentalFormPanel.scrollTop = 0;
   updateRentalRoomDetails();
-  rentalRoomInput.focus();
+  rentalRoomInput.focus({ preventScroll: true });
 }
 
 function closeRentalForm() {
@@ -739,6 +743,18 @@ async function saveRental(event) {
   event.preventDefault();
   rentalFormMessage.textContent = "";
   updateRentalDateConstraints();
+  const customerPhone = rentalCustomerPhone.value.trim();
+  const customerIdentity = rentalCustomerIdentity.value.trim();
+  rentalCustomerPhone.setCustomValidity(
+    customerPhone && !/^(?:09\d{8}|034\d{7})$/.test(customerPhone)
+      ? "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 09 hoặc 034."
+      : "",
+  );
+  rentalCustomerIdentity.setCustomValidity(
+    customerIdentity && !/^0\d{11}$/.test(customerIdentity)
+      ? "Số CCCD phải gồm 12 chữ số và bắt đầu bằng 0."
+      : "",
+  );
   if (!rentalRoomIdInput.value) {
     rentalRoomInput.setCustomValidity("Vui lòng tìm và chọn một mã phòng trong danh sách.");
   } else {
@@ -762,8 +778,8 @@ async function saveRental(event) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         customer_name: rentalCustomerName.value.trim(),
-        customer_phone: rentalCustomerPhone.value.trim(),
-        customer_identity: document.querySelector("#rentalCustomerIdentity").value.trim(),
+        customer_phone: customerPhone,
+        customer_identity: customerIdentity,
         room_id: Number(rentalRoomIdInput.value),
         starts_at: startsAt,
         ends_at: endsAt,
@@ -1660,20 +1676,25 @@ profileForm.addEventListener("submit", async (event) => {
     profileAvatarInput.focus();
     return;
   }
-  const phone = document.querySelector("#profilePhone").value.trim();
+  const phone = profilePhoneInput.value.trim();
   if (!/^\d+$/.test(phone)) {
     profileFormMessage.textContent = "Số điện thoại chỉ được nhập chữ số.";
-    document.querySelector("#profilePhone").focus();
+    profilePhoneInput.focus();
     return;
   }
   if (phone.length > 10) {
     profileFormMessage.textContent = "Số điện thoại không được vượt quá 10 chữ số.";
-    document.querySelector("#profilePhone").focus();
+    profilePhoneInput.focus();
     return;
   }
   if (phone.length < 10) {
     profileFormMessage.textContent = "Số điện thoại phải có đủ 10 chữ số.";
-    document.querySelector("#profilePhone").focus();
+    profilePhoneInput.focus();
+    return;
+  }
+  if (!/^(?:09\d{8}|034\d{7})$/.test(phone)) {
+    profileFormMessage.textContent = "Số điện thoại phải bắt đầu bằng 09 hoặc 034.";
+    profilePhoneInput.focus();
     return;
   }
   if (!profileForm.reportValidity()) return;
@@ -1699,6 +1720,9 @@ profileForm.addEventListener("submit", async (event) => {
   } finally {
     saveProfileButton.disabled = false;
   }
+});
+profilePhoneInput.addEventListener("input", () => {
+  profilePhoneInput.setCustomValidity("");
 });
 
 document.querySelector("#openRoomForm").addEventListener("click", () => openRoomForm());
@@ -1760,6 +1784,8 @@ function syncRentalCheckoutTime() {
 rentalStartTimeInput.addEventListener("input", syncRentalCheckoutTime);
 rentalStartTimeInput.addEventListener("change", syncRentalCheckoutTime);
 rentalForm.addEventListener("submit", saveRental);
+rentalCustomerPhone.addEventListener("input", () => rentalCustomerPhone.setCustomValidity(""));
+rentalCustomerIdentity.addEventListener("input", () => rentalCustomerIdentity.setCustomValidity(""));
 document.querySelector("#cancelRoomForm").addEventListener("click", resetRoomForm);
 document.querySelectorAll(".nav-button[data-view]").forEach((button) => {
   button.addEventListener("click", () => {
