@@ -137,10 +137,11 @@ function setDashboardView(view) {
     rooms: "QUẢN LÝ PHÒNG",
     "room-types": "THỂ LOẠI PHÒNG",
     history: "LỊCH SỬ",
+    revenue: "THỐNG KÊ THU NHẬP",
   };
   document.querySelector(".dashboard-header .kicker").textContent = `LOTUS STAY / ${viewLabels[view] || "TRANG CHỦ"}`;
   fitRoomTypeResults();
-  if (view === "history") loadRentalHistory();
+  if (view === "history" || view === "revenue") loadCompletedRentals();
 }
 
 function fitRoomTypeResults() {
@@ -965,10 +966,77 @@ function renderRentalHistory() {
   `).join("");
 }
 
-async function loadRentalHistory() {
+function renderRevenueReport() {
+  const total = document.querySelector("#revenueTotal");
+  const chart = document.querySelector("#revenueChart");
+  const currentYear = new Date().getFullYear();
+  document.querySelector("#revenueHeading").textContent = `Thu nhập năm ${currentYear}`;
+  document.querySelector("#revenueTotalLabel").textContent = `Tổng thu nhập năm ${currentYear}`;
+
+  if (rentalHistoryError) {
+    total.textContent = "Không thể tải doanh thu.";
+    chart.innerHTML = `<p class="revenue-chart-message is-error">${escapeHtml(rentalHistoryError)}</p>`;
+    return;
+  }
+
+  const monthlyTotals = Array(12).fill(0);
+  rentalHistoryRentals.forEach((rental) => {
+    const checkoutDate = String(rental.ends_at || "");
+    const rentalYear = Number(checkoutDate.slice(0, 4));
+    const month = Number(checkoutDate.slice(5, 7));
+    if (rentalYear === currentYear && month >= 1 && month <= 12) {
+      monthlyTotals[month - 1] += Number(rental.total_price || 0);
+    }
+  });
+  const annualTotal = monthlyTotals.reduce((sum, amount) => sum + amount, 0);
+  const maxMonthlyTotal = Math.max(...monthlyTotals, 0);
+  const rawScaleStep = maxMonthlyTotal > 0 ? maxMonthlyTotal / 4 : 250_000;
+  const scaleMagnitude = 10 ** Math.floor(Math.log10(rawScaleStep));
+  const normalizedScaleStep = rawScaleStep / scaleMagnitude;
+  const scaleStep = (normalizedScaleStep <= 1 ? 1 : normalizedScaleStep <= 2 ? 2 : normalizedScaleStep <= 5 ? 5 : 10) * scaleMagnitude;
+  const scaleMaximum = Math.max(4 * scaleStep, Math.ceil(maxMonthlyTotal / scaleStep) * scaleStep);
+  const tickCount = Math.round(scaleMaximum / scaleStep);
+  const scaleTicks = Array.from({ length: tickCount + 1 }, (_, index) => (tickCount - index) * scaleStep);
+  total.textContent = formatCurrency(annualTotal);
+  chart.innerHTML = `
+    <div class="revenue-chart-layout">
+      <ol class="revenue-chart-axis" aria-label="Thang doanh thu">
+        ${scaleTicks.map((value) => `
+          <li>${value === 0 ? "0" : `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(value / 1_000_000)} Tr`}</li>
+        `).join("")}
+      </ol>
+      <div class="revenue-chart-plot">
+        <div class="revenue-chart-gridlines" aria-hidden="true">
+          ${scaleTicks.map((_, index) => `<span style="top: ${(index / (scaleTicks.length - 1)) * 100}%"></span>`).join("")}
+        </div>
+        <ul class="revenue-chart" aria-label="Biểu đồ cột thu nhập 12 tháng năm ${currentYear}">
+          ${monthlyTotals.map((amount, index) => {
+            const height = (amount / scaleMaximum) * 100;
+            const monthLabel = `Tháng ${String(index + 1).padStart(2, "0")}`;
+            return `
+              <li class="revenue-chart-column" aria-label="${monthLabel}: ${escapeHtml(formatCurrency(amount))}">
+                <span class="revenue-chart-value" title="${escapeHtml(formatCurrency(amount))}">${escapeHtml(new Intl.NumberFormat("vi-VN", {
+                  notation: "compact",
+                  maximumFractionDigits: 1,
+                }).format(amount))}</span>
+                <div class="revenue-chart-track" aria-hidden="true">
+                  <span class="revenue-chart-bar" style="height: ${height}%"></span>
+                </div>
+                <span class="revenue-chart-month">${String(index + 1).padStart(2, "0")}</span>
+              </li>`;
+          }).join("")}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
+async function loadCompletedRentals() {
   const rows = document.querySelector("#rentalHistoryRows");
   rentalHistoryError = "";
   rows.innerHTML = '<tr><td class="history-empty" colspan="8">Đang tải lịch sử thuê phòng...</td></tr>';
+  document.querySelector("#revenueTotal").textContent = "Đang tải doanh thu...";
+  document.querySelector("#revenueChart").innerHTML = '<p class="revenue-chart-message">Đang tải thống kê thu nhập...</p>';
   try {
     const response = await fetch("/api/rentals/history");
     const result = await response.json();
@@ -976,14 +1044,17 @@ async function loadRentalHistory() {
       rentalHistoryError = result.message || "Không thể tải lịch sử thuê phòng.";
       rentalHistoryRentals = [];
       renderRentalHistory();
+      renderRevenueReport();
       return;
     }
     rentalHistoryRentals = result.rentals;
     renderRentalHistory();
+    renderRevenueReport();
   } catch {
     rentalHistoryError = "Không thể kết nối máy chủ để tải lịch sử thuê phòng.";
     rentalHistoryRentals = [];
     renderRentalHistory();
+    renderRevenueReport();
   }
 }
 
@@ -1847,7 +1918,7 @@ rentalCustomerIdentity.addEventListener("input", () => rentalCustomerIdentity.se
 document.querySelector("#cancelRoomForm").addEventListener("click", resetRoomForm);
 document.querySelectorAll(".nav-button[data-view]").forEach((button) => {
   button.addEventListener("click", () => {
-    if (["overview", "rooms", "room-types", "history"].includes(button.dataset.view)) {
+    if (["overview", "rooms", "room-types", "history", "revenue"].includes(button.dataset.view)) {
       setDashboardView(button.dataset.view);
     }
   });
