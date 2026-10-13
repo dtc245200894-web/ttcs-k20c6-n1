@@ -296,7 +296,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
 .revenue-year-control { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 0 auto; color: var(--muted); font-size: 12px; font-weight: 600; }
 .revenue-year-control select { width: auto; min-width: 100px; min-height: 40px; margin: 0; padding: 0 30px 0 12px; border-color: var(--line); border-radius: 6px; color: var(--forest); font-size: 13px; font-weight: 600; }
 .revenue-summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.revenue-card { display: grid; min-width: 0; gap: 8px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.revenue-card { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 16px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.revenue-total-copy { display: grid; min-width: 0; gap: 8px; }
 .revenue-card p { margin: 0; color: var(--muted); font-size: 12px; }
 .revenue-card strong { overflow-wrap: anywhere; color: var(--forest); font-size: 20px; }
 .revenue-chart-panel { display: grid; min-width: 0; gap: 18px; margin: 0; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
