@@ -245,11 +245,15 @@
 
             <section class="dashboard-section" data-dashboard-view="revenue">
               <div class="revenue-section">
-                <div class="history-heading">
+                <div class="history-heading revenue-heading">
                   <div>
                     <p class="kicker">THỐNG KÊ THU NHẬP</p>
                     <h3 id="revenueHeading">Thu nhập năm nay</h3>
                   </div>
+                  <label class="revenue-year-control">
+                    <span>Năm</span>
+                    <select id="revenueYearSelector" aria-label="Chọn năm thống kê doanh thu"></select>
+                  </label>
                 </div>
                 <div class="revenue-summary">
                   <article class="revenue-card">
@@ -258,7 +262,10 @@
                   </article>
                 </div>
                 <figure class="revenue-chart-panel" aria-labelledby="revenueChartTitle">
-                  <figcaption id="revenueChartTitle">Thu nhập theo tháng</figcaption>
+                  <figcaption class="revenue-chart-heading">
+                    <span id="revenueChartTitle">Thu nhập theo tháng</span>
+                    <button class="secondary-button hidden" id="revenueMonthBack" type="button">← Quay lại theo tháng</button>
+                  </figcaption>
                   <div id="revenueChart" aria-live="polite">
                     <p class="revenue-chart-message">Chọn mục Thống kê thu nhập để tải dữ liệu.</p>
                   </div>

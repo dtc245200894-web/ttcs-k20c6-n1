@@ -55,8 +55,12 @@ const passwordResetCompleteMessage = document.querySelector("#passwordResetCompl
 const roomsGrid = document.querySelector("#roomsGrid");
 const overviewRoomsGrid = document.querySelector("#overviewRoomsGrid");
 const rentalHistorySearch = document.querySelector("#rentalHistorySearch");
+const revenueYearSelector = document.querySelector("#revenueYearSelector");
+const revenueMonthBackButton = document.querySelector("#revenueMonthBack");
 let rentalHistoryRentals = [];
 let rentalHistoryError = "";
+let selectedRevenueYear = new Date().getFullYear();
+let selectedRevenueMonth = null;
 const roomForm = document.querySelector("#roomForm");
 const roomFormPanel = document.querySelector("#roomFormPanel");
 const roomFormModal = document.querySelector("#roomFormModal");
@@ -970,8 +974,29 @@ function renderRevenueReport() {
   const total = document.querySelector("#revenueTotal");
   const chart = document.querySelector("#revenueChart");
   const currentYear = new Date().getFullYear();
-  document.querySelector("#revenueHeading").textContent = `Thu nhập năm ${currentYear}`;
-  document.querySelector("#revenueTotalLabel").textContent = `Tổng thu nhập năm ${currentYear}`;
+  const rentalYears = rentalHistoryRentals
+    .map((rental) => Number(String(rental.ends_at || "").slice(0, 4)))
+    .filter((year) => Number.isInteger(year) && year > 0);
+  const firstYear = Math.min(currentYear - 10, selectedRevenueYear, ...rentalYears);
+  const lastYear = Math.max(currentYear, selectedRevenueYear, ...rentalYears);
+  revenueYearSelector.innerHTML = Array.from(
+    { length: lastYear - firstYear + 1 },
+    (_, index) => lastYear - index,
+  ).map((year) => `<option value="${year}">${year}</option>`).join("");
+  revenueYearSelector.value = String(selectedRevenueYear);
+  const revenueHeading = document.querySelector("#revenueHeading");
+  const revenueTotalLabel = document.querySelector("#revenueTotalLabel");
+  const chartTitle = document.querySelector("#revenueChartTitle");
+  revenueHeading.textContent = selectedRevenueMonth
+    ? `Thu nhập tháng ${String(selectedRevenueMonth).padStart(2, "0")} năm ${selectedRevenueYear}`
+    : `Thu nhập năm ${selectedRevenueYear}`;
+  revenueTotalLabel.textContent = selectedRevenueMonth
+    ? `Tổng thu nhập tháng ${String(selectedRevenueMonth).padStart(2, "0")} năm ${selectedRevenueYear}`
+    : `Tổng thu nhập năm ${selectedRevenueYear}`;
+  chartTitle.textContent = selectedRevenueMonth
+    ? `Thu nhập theo ngày trong tháng ${String(selectedRevenueMonth).padStart(2, "0")}`
+    : "Thu nhập theo tháng";
+  revenueMonthBackButton.classList.toggle("hidden", selectedRevenueMonth === null);
 
   if (rentalHistoryError) {
     total.textContent = "Không thể tải doanh thu.";
@@ -979,28 +1004,35 @@ function renderRevenueReport() {
     return;
   }
 
-  const monthlyTotals = Array(12).fill(0);
+  const periodTotals = Array(selectedRevenueMonth
+    ? new Date(selectedRevenueYear, selectedRevenueMonth, 0).getDate()
+    : 12).fill(0);
   rentalHistoryRentals.forEach((rental) => {
     const checkoutDate = String(rental.ends_at || "");
     const rentalYear = Number(checkoutDate.slice(0, 4));
     const month = Number(checkoutDate.slice(5, 7));
-    if (rentalYear === currentYear && month >= 1 && month <= 12) {
-      monthlyTotals[month - 1] += Number(rental.total_price || 0);
+    const day = Number(checkoutDate.slice(8, 10));
+    if (rentalYear === selectedRevenueYear && month >= 1 && month <= 12) {
+      if (selectedRevenueMonth === null) {
+        periodTotals[month - 1] += Number(rental.total_price || 0);
+      } else if (month === selectedRevenueMonth && day >= 1 && day <= periodTotals.length) {
+        periodTotals[day - 1] += Number(rental.total_price || 0);
+      }
     }
   });
-  const annualTotal = monthlyTotals.reduce((sum, amount) => sum + amount, 0);
-  const maxMonthlyTotal = Math.max(...monthlyTotals, 0);
-  const rawScaleStep = maxMonthlyTotal > 0 ? maxMonthlyTotal / 4 : 250_000;
+  const periodTotal = periodTotals.reduce((sum, amount) => sum + amount, 0);
+  const maxPeriodTotal = Math.max(...periodTotals, 0);
+  const rawScaleStep = maxPeriodTotal > 0 ? maxPeriodTotal / 4 : 250_000;
   const scaleMagnitude = 10 ** Math.floor(Math.log10(rawScaleStep));
   const normalizedScaleStep = rawScaleStep / scaleMagnitude;
   const scaleStep = (normalizedScaleStep <= 1 ? 1 : normalizedScaleStep <= 2 ? 2 : normalizedScaleStep <= 5 ? 5 : 10) * scaleMagnitude;
-  const scaleMaximum = Math.max(4 * scaleStep, Math.ceil(maxMonthlyTotal / scaleStep) * scaleStep);
+  const scaleMaximum = Math.max(4 * scaleStep, Math.ceil(maxPeriodTotal / scaleStep) * scaleStep);
   const tickCount = Math.round(scaleMaximum / scaleStep);
   const scaleTicks = Array.from({ length: tickCount + 1 }, (_, index) => (tickCount - index) * scaleStep);
-  total.textContent = formatCurrency(annualTotal);
+  total.textContent = formatCurrency(periodTotal);
   chart.innerHTML = `
     <div class="revenue-chart-layout">
-      <ol class="revenue-chart-axis" aria-label="Thang doanh thu">
+      <ol class="revenue-chart-axis" aria-label="Mức doanh thu">
         ${scaleTicks.map((value) => `
           <li>${value === 0 ? "0" : `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(value / 1_000_000)} Tr`}</li>
         `).join("")}
@@ -1009,20 +1041,28 @@ function renderRevenueReport() {
         <div class="revenue-chart-gridlines" aria-hidden="true">
           ${scaleTicks.map((_, index) => `<span style="top: ${(index / (scaleTicks.length - 1)) * 100}%"></span>`).join("")}
         </div>
-        <ul class="revenue-chart" aria-label="Biểu đồ cột thu nhập 12 tháng năm ${currentYear}">
-          ${monthlyTotals.map((amount, index) => {
+        <ul class="revenue-chart ${selectedRevenueMonth ? "is-daily" : ""}" style="--revenue-period-count: ${periodTotals.length}" aria-label="${selectedRevenueMonth
+    ? `Biểu đồ cột doanh thu các ngày trong tháng ${selectedRevenueMonth} năm ${selectedRevenueYear}`
+    : `Biểu đồ cột thu nhập 12 tháng năm ${selectedRevenueYear}`}">
+          ${periodTotals.map((amount, index) => {
             const height = (amount / scaleMaximum) * 100;
-            const monthLabel = `Tháng ${String(index + 1).padStart(2, "0")}`;
+            const periodLabel = selectedRevenueMonth
+              ? `Ngày ${String(index + 1).padStart(2, "0")}`
+              : `Tháng ${String(index + 1).padStart(2, "0")}`;
             return `
-              <li class="revenue-chart-column" aria-label="${monthLabel}: ${escapeHtml(formatCurrency(amount))}">
-                <span class="revenue-chart-value" title="${escapeHtml(formatCurrency(amount))}">${escapeHtml(new Intl.NumberFormat("vi-VN", {
-                  notation: "compact",
-                  maximumFractionDigits: 1,
-                }).format(amount))}</span>
-                <div class="revenue-chart-track" aria-hidden="true">
-                  <span class="revenue-chart-bar" style="height: ${height}%"></span>
-                </div>
-                <span class="revenue-chart-month">${String(index + 1).padStart(2, "0")}</span>
+              <li class="revenue-chart-column">
+                <button class="revenue-chart-column-button" type="button" ${selectedRevenueMonth === null
+    ? `data-revenue-month="${index + 1}" aria-label="Xem chi tiết ${periodLabel}: ${escapeHtml(formatCurrency(amount))}"`
+    : `aria-label="${periodLabel}: ${escapeHtml(formatCurrency(amount))}" disabled`}>
+                  <span class="revenue-chart-value" title="${escapeHtml(formatCurrency(amount))}">${escapeHtml(new Intl.NumberFormat("vi-VN", {
+                    notation: "compact",
+                    maximumFractionDigits: 1,
+                  }).format(amount))}</span>
+                  <span class="revenue-chart-track" aria-hidden="true">
+                    <span class="revenue-chart-bar" style="height: ${height}%"></span>
+                  </span>
+                  <span class="revenue-chart-month">${String(index + 1).padStart(2, "0")}</span>
+                </button>
               </li>`;
           }).join("")}
         </ul>
@@ -1890,6 +1930,21 @@ rentalRoomResults.addEventListener("keydown", (event) => {
   }
 });
 rentalHistorySearch.addEventListener("input", renderRentalHistory);
+revenueYearSelector.addEventListener("change", () => {
+  selectedRevenueYear = Number(revenueYearSelector.value);
+  selectedRevenueMonth = null;
+  renderRevenueReport();
+});
+revenueMonthBackButton.addEventListener("click", () => {
+  selectedRevenueMonth = null;
+  renderRevenueReport();
+});
+document.querySelector("#revenueChart").addEventListener("click", (event) => {
+  const monthButton = event.target.closest("[data-revenue-month]");
+  if (!monthButton) return;
+  selectedRevenueMonth = Number(monthButton.dataset.revenueMonth);
+  renderRevenueReport();
+});
 rentalEndInput.addEventListener("input", updateRentalSummary);
 rentalStartDateInput.addEventListener("input", () => {
   const nowValue = localDateTimeValue(new Date());
