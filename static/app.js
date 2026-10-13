@@ -57,6 +57,7 @@ const overviewRoomsGrid = document.querySelector("#overviewRoomsGrid");
 const rentalHistorySearch = document.querySelector("#rentalHistorySearch");
 const revenueYearSelector = document.querySelector("#revenueYearSelector");
 const revenueMonthBackButton = document.querySelector("#revenueMonthBack");
+const exportRevenuePdfButton = document.querySelector("#exportRevenuePdfButton");
 let rentalHistoryRentals = [];
 let rentalHistoryError = "";
 let selectedRevenueYear = new Date().getFullYear();
@@ -1001,6 +1002,7 @@ function renderRevenueReport() {
   if (rentalHistoryError) {
     total.textContent = "Không thể tải doanh thu.";
     chart.innerHTML = `<p class="revenue-chart-message is-error">${escapeHtml(rentalHistoryError)}</p>`;
+    exportRevenuePdfButton.disabled = true;
     return;
   }
 
@@ -1021,6 +1023,7 @@ function renderRevenueReport() {
     }
   });
   const periodTotal = periodTotals.reduce((sum, amount) => sum + amount, 0);
+  exportRevenuePdfButton.disabled = false;
   const maxPeriodTotal = Math.max(...periodTotals, 0);
   const rawScaleStep = maxPeriodTotal > 0 ? maxPeriodTotal / 4 : 250_000;
   const scaleMagnitude = 10 ** Math.floor(Math.log10(rawScaleStep));
@@ -1077,6 +1080,7 @@ async function loadCompletedRentals() {
   rows.innerHTML = '<tr><td class="history-empty" colspan="8">Đang tải lịch sử thuê phòng...</td></tr>';
   document.querySelector("#revenueTotal").textContent = "Đang tải doanh thu...";
   document.querySelector("#revenueChart").innerHTML = '<p class="revenue-chart-message">Đang tải thống kê thu nhập...</p>';
+  exportRevenuePdfButton.disabled = true;
   try {
     const response = await fetch("/api/rentals/history");
     const result = await response.json();
@@ -1930,6 +1934,44 @@ rentalRoomResults.addEventListener("keydown", (event) => {
   }
 });
 rentalHistorySearch.addEventListener("input", renderRentalHistory);
+exportRevenuePdfButton.addEventListener("click", async () => {
+  if (exportRevenuePdfButton.disabled) return;
+
+  exportRevenuePdfButton.disabled = true;
+  exportRevenuePdfButton.textContent = "Đang xuất...";
+  try {
+    const response = await fetch("/api/rentals/revenue/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        year: selectedRevenueYear,
+        month: selectedRevenueMonth,
+      }),
+    });
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.message || "Không thể xuất báo cáo PDF.");
+    }
+
+    const pdf = await response.blob();
+    const downloadUrl = URL.createObjectURL(pdf);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = downloadUrl;
+    downloadLink.download = selectedRevenueMonth
+      ? `thong-ke-thu-nhap-${selectedRevenueYear}-thang-${String(selectedRevenueMonth).padStart(2, "0")}.pdf`
+      : `thong-ke-thu-nhap-${selectedRevenueYear}.pdf`;
+    document.body.append(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    showSuccessToast("Đã tải báo cáo PDF xuống máy.");
+  } catch (error) {
+    window.alert(error.message || "Không thể xuất báo cáo PDF.");
+  } finally {
+    exportRevenuePdfButton.disabled = false;
+    exportRevenuePdfButton.textContent = "Export PDF";
+  }
+});
 revenueYearSelector.addEventListener("change", () => {
   selectedRevenueYear = Number(revenueYearSelector.value);
   selectedRevenueMonth = null;
