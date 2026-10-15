@@ -20,6 +20,7 @@ Cần [Python 3.10 trở lên](https://www.python.org/downloads/). Mở PowerShe
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+pip install reportlab
 python app.py
 ```
 
