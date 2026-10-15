@@ -755,8 +755,8 @@ async function saveRental(event) {
   const customerPhone = rentalCustomerPhone.value.trim();
   const customerIdentity = rentalCustomerIdentity.value.trim();
   rentalCustomerPhone.setCustomValidity(
-    customerPhone && !/^(?:09\d{8}|034\d{7})$/.test(customerPhone)
-      ? "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 09 hoặc 034."
+    customerPhone && !/^0(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])\d{7}$/.test(customerPhone)
+      ? "Số điện thoại phải gồm 10 chữ số và thuộc đầu số di động Việt Nam (03, 05, 07, 08 hoặc 09)."
       : "",
   );
   rentalCustomerIdentity.setCustomValidity(
@@ -1865,8 +1865,8 @@ profileForm.addEventListener("submit", async (event) => {
     profilePhoneInput.focus();
     return;
   }
-  if (!/^(?:09\d{8}|034\d{7})$/.test(phone)) {
-    profileFormMessage.textContent = "Số điện thoại phải bắt đầu bằng 09 hoặc 034.";
+  if (!/^0(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])\d{7}$/.test(phone)) {
+    profileFormMessage.textContent = "Số điện thoại phải thuộc đầu số di động Việt Nam (03, 05, 07, 08 hoặc 09).";
     profilePhoneInput.focus();
     return;
   }

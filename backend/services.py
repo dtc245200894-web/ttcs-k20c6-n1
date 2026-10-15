@@ -13,6 +13,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from backend.database import Database
 
 
+VIETNAMESE_MOBILE_PHONE_PATTERN = re.compile(
+    r"0(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-9])\d{7}"
+)
+
+
 class AuthService:
     def __init__(self, database: Database) -> None:
         self.database = database
@@ -203,8 +208,8 @@ class AuthService:
             return None, "Vui lòng nhập ngày sinh hợp lệ."
         if parsed_birth_date > date.today():
             return None, "Ngày sinh không được ở tương lai."
-        if not re.fullmatch(r"(?:09[0-9]{8}|034[0-9]{7})", phone):
-            return None, "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 09 hoặc 034."
+        if not VIETNAMESE_MOBILE_PHONE_PATTERN.fullmatch(phone):
+            return None, "Số điện thoại phải gồm 10 chữ số và thuộc đầu số di động Việt Nam (03, 05, 07, 08 hoặc 09)."
         return {
             "full_name": full_name,
             "date_of_birth": date_of_birth,
@@ -585,8 +590,8 @@ class RoomService:
             return False, "Phòng được chọn không hợp lệ.", None
         if not isinstance(customer_name, str) or not customer_name.strip() or len(customer_name.strip()) > 120:
             return False, "Vui lòng nhập tên khách hợp lệ.", None
-        if not isinstance(customer_phone, str) or not re.fullmatch(r"(?:09\d{8}|034\d{7})", customer_phone.strip()):
-            return False, "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 09 hoặc 034.", None
+        if not isinstance(customer_phone, str) or not VIETNAMESE_MOBILE_PHONE_PATTERN.fullmatch(customer_phone.strip()):
+            return False, "Số điện thoại phải gồm 10 chữ số và thuộc đầu số di động Việt Nam (03, 05, 07, 08 hoặc 09).", None
         if not isinstance(customer_identity, str) or not re.fullmatch(r"0\d{11}", customer_identity.strip()):
             return False, "Số CCCD phải gồm 12 chữ số và bắt đầu bằng 0.", None
         if not isinstance(starts_at, str) or not isinstance(ends_at, str):
